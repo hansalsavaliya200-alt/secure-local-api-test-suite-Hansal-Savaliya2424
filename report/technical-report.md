@@ -1,106 +1,182 @@
 # Secure Local API and Test Suite
 
-**Name:** Hansal Savaliya  **Intern ID:** 2424
-**Task:** Task 2, Group A: Ethical Hacking & Web Application Security
-**Date:** November 2026
-**Repository:** `<ADD GITHUB URL>`  **Video:** `<ADD VIDEO URL>`
+## Task 2 · Group A · Ethical Hacking & Web Application Security
 
-## 1. Problem
+|  |  |
+|---|---|
+| **Author** | Hansal Savaliya · Intern ID 2424 |
+| **Report date** | 13 November 2026 |
+| **Repository** | `<ADD GITHUB URL>` |
+| **Demonstration video** | `<ADD VIDEO URL>` |
+| **Project scope** | Defensive test application bound to `127.0.0.1` |
 
-The task was to build a local API that implements authentication, role checks, input validation and rate limiting, and to test both allowed and denied requests. Web APIs fail most often through missing checks, not clever attacks: a missing ownership check exposes other users' data, a missing role check lets an ordinary user do admin work, and a missing limit allows unlimited password guessing (OWASP API Security Top 10, 2023 [6]). The goal was therefore a small working API *and* evidence that each control really works, including evidence that the tests would notice if a control were removed.
+## Executive summary
 
-## 2. Scope and safety
+This project implements a small helpdesk-ticket API with authentication, role-based and object-level authorization, request validation, and rate limiting. The purpose was not just to demonstrate successful requests: the test suite also checks denied requests, boundary values, and whether tests fail when a control is deliberately weakened in a temporary project copy.
 
-Everything runs on 127.0.0.1 on my own computer. All data is synthetic: four demo users (`alice`, `bob`, `carol`, `dave`) and example tickets. No real credentials, personal data or third-party systems were used or tested. PortSwigger labs are completed only in PortSwigger's own environment, and OWASP Juice Shop is optional and local only. The scope statement is in `docs/scope-and-ethics.md`.
+Verification on 13 November 2026 produced **116 passing pytest cases** across **75 test functions**, a successful live demo, and detection of all **five** injected test mutations. A live test also exposed an interaction between Uvicorn's proxy-header handling and the application's address-based login limit. Launching with `--no-proxy-headers` corrected the observed behavior; the before-and-after output is retained in the evidence directory.
 
-## 3. Design
+These are results from a controlled local demonstration, not a penetration test, production readiness assessment, or proof that the API is free of vulnerabilities.
 
-The API is a small helpdesk-ticket service built with FastAPI. Three roles exist: `user` (own tickets only), `agent` (read all tickets, change status) and `admin` (everything, including deleting tickets and changing roles).
+| Project measure | Recorded result |
+|---|---|
+| Automated suite | 116 passed; 75 test functions |
+| Live demo | All checks passed against `127.0.0.1:8001` |
+| Mutation experiment | 5 of 5 injected weaknesses detected |
+| Retest after mutations | 116 passed on the unmodified code |
+| Generated test matrix | 75 of 75 test functions pass |
 
-Each request passes through the same steps:
+## 1. Objective and scope
 
-1. **Pre-checks:** rate limit, then size (`Content-Length`) and `Content-Type`.
-2. **Authentication:** verify a bearer JWT and load the user from the store.
-3. **Role check:** compare the user's current role with the roles the route allows.
-4. **Validation:** strict models that reject unknown fields.
-5. **Object-level check:** may this caller touch *this* ticket?
-6. **Safe response:** a single error format, security headers and a request ID.
+The objective was to build a repeatable, safe demonstration of common API security controls and verify both permitted and denied behavior. The implementation uses fictional accounts and tickets, and runs on the local machine. The API has three roles:
 
-Key design decisions (full table in `docs/design.md`):
+| Role | Intended permissions |
+|---|---|
+| `user` | Create tickets and access their own tickets |
+| `agent` | Read tickets and update ticket status |
+| `admin` | Administrative user and ticket operations |
 
-- **The token proves identity, not authority.** It carries only the username. The role is read from the store on every request, so a demotion takes effect immediately.
-- **A foreign ticket returns 404, not 403,** so the response does not confirm that the ticket exists.
-- **The rate limiter keys on the real socket address,** never on `X-Forwarded-For`, because the client controls that header [17].
+The project tests four connected areas: authentication and token handling, function- and object-level access control, input validation, and request-rate/resource controls. PortSwigger Academy labs are performed only in PortSwigger's lab environment; details of the two screenshot-confirmed labs are recorded separately in `docs/portswigger-lab-log.md`.
 
-## 4. Implementation
+All API and live-demo requests target `127.0.0.1`. Demo accounts (`alice`, `bob`, `carol`, `dave`), tickets, and test values are fictional. No real user credentials, personal data, or third-party targets were used for the API tests. The complete scope statement and data provenance are in `docs/scope-and-ethics.md`.
 
-| Control | How it is done | File |
+## 2. System design
+
+The application is a FastAPI service with an in-memory user/ticket store. Its request path is deliberately ordered so inexpensive controls run before route work:
+
+**Request → address-based rate limit → size/content-type checks → bearer-token verification → current role check → schema validation → ticket ownership check → response, security headers, and safe log entry**
+
+Authentication establishes identity; authorization is evaluated separately. A JWT contains the subject but not trusted authority. The current role is loaded from the store on every request, so an already-issued token does not preserve a role after a demotion.
+
+| Control | Implementation and expected behavior |
+|---|---|
+| Password verification | Passwords use salted scrypt hashes; comparison uses `hmac.compare_digest`. Unknown usernames also incur a dummy hash check [12][13]. |
+| Access tokens | HS256 is explicitly pinned; `exp`, `iat`, `sub`, and `iss` are required and the issuer is verified. Tokens expire after 15 minutes [8][9]. |
+| Authentication errors | Missing, malformed, expired, or invalid tokens receive a consistent `401` response with `WWW-Authenticate: Bearer` [10]. |
+| Role authorization | Route dependencies check the current server-side role. A logged-in user without the required role receives `403` [14]. |
+| Ticket ownership | Users can access their own tickets. A foreign ticket and a missing ticket both return `404` to avoid confirming that a ticket exists [6][14]. |
+| Request validation | Pydantic models reject extra fields, constrain lengths and enumerated values, and reject disallowed control characters [15][16]. |
+| Request handling | Non-JSON request bodies receive `415`; requests over the configured 10 KiB `Content-Length` limit receive `413` [17]. |
+| Rate limiting | Sliding windows allow 5 login requests per 60 seconds and 60 requests per 60 seconds on other routes; excess requests receive `429` and `Retry-After` [11][17]. |
+| Response/log hardening | Standardized errors, generic `500` responses, request IDs, security headers, and logs that omit query strings and credentials [17][18]. Interactive API docs are disabled by default. |
+
+Implementation details are in `app/security.py`, `app/deps.py`, `app/models.py`, `app/ratelimit.py`, `app/main.py`, and `docs/design.md`. These controls follow the cited guidance on JWT best practices, authorization, validation, password storage, REST security, and logging [9][13][14][15][17][18].
+
+## 3. Verification method
+
+Verification uses three complementary layers because an in-process test client does not exercise every behavior of a real ASGI server.
+
+1. **Automated pytest suite.** The app is exercised with a fresh store and rate limiter for each test. A fake clock makes sliding-window boundaries repeatable without waiting. Cases cover positive flows, denied requests, malformed tokens, validation boundaries, error responses, role changes, and rate-limit behavior.
+2. **Live HTTP demo.** `scripts/demo_requests.py` sends requests to a running Uvicorn server and prints expected and actual status codes. This checks the API through the actual server launch path, including the forwarded-address behavior.
+3. **Mutation experiment.** `scripts/mutation_check.py` copies the project to a temporary directory, weakens one control per copy, and runs pytest. A mutation is detected when the weakened copy fails tests. The script then retests the original, unmodified project. The real source files are not mutated.
+
+The curated expected/actual matrix is generated from pytest's JUnit XML by `scripts/build_test_matrix.py`. Evidence files are saved in `docs/evidence/`; the report summarizes selected cases rather than replacing that detailed matrix.
+
+### Reproduction
+
+From the project directory in Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+python -m pytest
+python scripts/mutation_check.py
+```
+
+In a first terminal, create an ephemeral local signing key and start the API. Port `8000` is the documented default; `8001` was used for the captured demo because `8000` was already occupied on that machine.
+
+```powershell
+$env:APP_SECRET_KEY = python -c "import secrets; print(secrets.token_urlsafe(40))"
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --no-proxy-headers
+```
+
+In a second terminal:
+
+```powershell
+python scripts/demo_requests.py http://127.0.0.1:8001
+```
+
+Use the documented `--no-proxy-headers` option for the local demo. If running behind a trusted reverse proxy in another environment, configure only the actual proxy as trusted; do not treat a client-supplied forwarding header as identity. The demo applies a per-address login limit, so wait 60 seconds before repeating it.
+
+## 4. Test results
+
+### Automated cases
+
+The captured pytest run used Python 3.12.10 and pytest 9.2.0. It collected 116 cases and completed with **116 passed in 3.88 seconds**. The principal evidence is `docs/evidence/pytest-output.txt`.
+
+| Scenario | Expected | Actual |
+|---|---:|---:|
+| Valid login and access to `/me` | `200` | `200` |
+| Missing or tampered bearer token | `401` | `401` |
+| Unsigned (`alg: none`), expired, or wrong-issuer JWT | `401` | `401` |
+| User reads own ticket / another user's ticket | `200` / `404` | `200` / `404` |
+| User or agent lists administrative accounts | `403` | `403` |
+| Admin lists accounts | `200` | `200` |
+| Client attempts to set ticket `owner` | `422` | `422` |
+| Form body instead of JSON | `415` | `415` |
+| Ticket title at 100 / 101 characters | `201` / `422` | `201` / `422` |
+| Request over configured size limit | `413` | `413` |
+| Sixth login attempt within the window | `429` with `Retry-After` | `429` |
+| Malformed ticket UUID | `404`, not `500` | `404` |
+
+This is a representative selection, not the complete inventory. The full curated list, including additional normal, negative, and edge cases, appears in `docs/test-matrix.md`.
+
+### Mutation experiment: can the tests detect weakened controls?
+
+Every listed weakness was inserted only into a temporary copy. All five mutations were detected; the unmodified code then passed all 116 cases. The run is preserved in `docs/evidence/mutation-check-output.txt` and `docs/evidence/mutation-results.json`.
+
+| Deliberately weakened control in temporary copy | Failing tests | Detected |
+|---|---:|---|
+| Allow any logged-in user to list accounts | 2 | Yes |
+| Allow any logged-in user to delete tickets | 2 | Yes |
+| Remove ticket ownership enforcement | 2 | Yes |
+| Ignore unknown request fields | 4 | Yes |
+| Raise the login limit so it is effectively disabled | 5 | Yes |
+
+The 15 failures above are test detections across the five separate mutation runs; they are not 15 unique vulnerabilities in the final application. The original implementation was retested successfully afterward.
+
+## 5. Findings and remediation
+
+Findings below describe observed project-test results. “Pass” means the stated behavior was verified by the recorded tests; it is not a claim that the system has no other weaknesses.
+
+| ID | Finding | Evidence and result |
 |---|---|---|
-| Passwords | scrypt (N=2^14, r=8, p=1) with a random salt; constant-time comparison; a dummy hash is checked for unknown users so timing and message match [12][13] | `app/security.py` |
-| Tokens | HS256 JWT, 15-minute lifetime, algorithm pinned, claims `exp`, `iat`, `sub`, `iss` required, issuer checked [8][9] | `app/security.py` |
-| 401 handling | One response for every authentication failure, with `WWW-Authenticate: Bearer` [10] | `app/deps.py` |
-| Role checks | `require_roles(...)` dependency on each protected route; deny by default [14] | `app/deps.py`, `app/main.py` |
-| Validation | Pydantic models with `extra="forbid"`, length limits, enumerated values, control-character rejection, UUID path parsing [15][16] | `app/models.py` |
-| Request limits | `Content-Type` must be JSON (415); body larger than 10 KB is refused (413) | `app/main.py` |
-| Rate limiting | Sliding window per client address: login 5 per 60 s, other routes 60 per 60 s; `429` with `Retry-After` [11] | `app/ratelimit.py` |
-| Errors and logs | Generic 500; validation errors never echo the submitted value; log lines contain method, path and status but no query string, token or password [17][18] | `app/errors.py`, `app/main.py` |
-| Hardening | `X-Content-Type-Options`, `Cache-Control: no-store`, `Referrer-Policy`, CSP and `X-Frame-Options`; `/docs` disabled by default | `app/main.py` |
-| Startup safety | The signing key must be at least 32 characters; if none is set a random one is generated and a warning is logged | `app/config.py` |
+| F-01 | Function- and object-level authorization are enforced for tested cases. | User/agent administrative requests were denied; an owner could read their ticket; a different user received the same `404` behavior as a missing ticket. Related mutations were detected. |
+| F-02 | Token verification rejects tested invalid credentials and token forms. | Missing, modified, unsigned, expired, wrong-issuer, and wrong-key tokens were rejected with `401`. Role changes are read from the server rather than trusted from the old token. |
+| F-03 | Strict request schemas reject tested mass-assignment and malformed-input cases. | An `owner` field and invalid payloads were rejected; content type, field length, request size, and UUID cases returned the expected error codes. |
+| F-04 | Login limiting works in app tests and in the corrected live launch. | Five attempts were allowed, the next was limited with `429` and `Retry-After`; the fake-clock test verified window expiry. |
+| F-05 | Initial live launch exposed a forwarded-header / rate-limit interaction; the launch configuration was corrected and retested. | With Uvicorn's default proxy-header behavior, the forged `X-Forwarded-For` check returned `401` rather than the expected `429`. Starting with `--no-proxy-headers` made the same check return `429`; the live demo then passed. Before/after output is in `docs/evidence/xff-before-after.txt`. |
 
-## 5. Test method
+**F-05 analysis.** The application's limiter keys on the address it receives from the ASGI request. In the first live run, the default server configuration trusted the forwarded address, allowing a client-supplied `X-Forwarded-For` value to appear as a different client. The in-process `TestClient` tests did not expose the server configuration interaction. Disabling proxy-header handling for this local run restored the expected per-client limit. This illustrates why deployment configuration must be included in end-to-end verification; the corrective launch option is documented in the README. The observed behavior and configuration are consistent with Uvicorn's proxy-header settings [20]; the specific reference URL could not be opened during the reference check, as noted in `references.md`.
 
-Testing used three layers, each answering a different question.
+## 6. Limitations and residual risks
 
-1. **Automated suite (pytest, 116 cases in 75 test functions).** Tests call the app through FastAPI's `TestClient` with a fresh store and rate limiter for every test, and a fake clock so that the 60-second windows can be tested instantly. The tests cover normal use, denied requests, boundary values and abuse cases, following the planning approach in the WSTG [3][4].
-2. **Live demo client** (`scripts/demo_requests.py`). It starts from the outside, as a real client would, against a real `uvicorn` server, and prints expected against actual status for 24 requests.
-3. **Mutation experiment** (`scripts/mutation_check.py`). A passing test suite does not show that the tests are *capable of failing*. The script copies the project to a temporary directory, removes one control at a time, runs the suite and expects failures, then retests the unmodified code.
+- **In-memory storage and limiter:** users, tickets, and counters reset on restart and are not shared across worker processes. This design is for a small local demo, not a multi-worker service.
+- **Local HTTP only:** TLS and remote deployment are outside the demonstrated scope.
+- **Request-size enforcement:** the current limit checks `Content-Length`; a chunked body without that header is not capped by this check.
+- **Address-based rate limiting:** clients sharing an address share a quota, and distributed sources may not be constrained by one address-based counter.
+- **Token lifecycle:** access tokens expire after 15 minutes, but there is no refresh-token flow or token revocation. A stolen token remains usable until expiry or the associated account is disabled.
+- **Signing-key operations:** the demo accepts a sufficiently long environment key or creates a random startup key. Key rotation and persistent secret management are not implemented.
+- **Test scope:** passing tests verify selected requirements and regressions. Mutation checks show that these tests detect the inserted weaknesses, not that every possible attack or flaw has been found.
 
-The expected-against-actual matrix is in `docs/test-matrix.md`. It is generated from the real pytest run, not typed by hand.
+## 7. Recommended next steps
 
-## 6. Results
+For a larger or production-oriented system, use persistent storage and a shared rate-limit backend; enforce limits while reading request bytes, not only from `Content-Length`; implement token revocation and key rotation; and add a real-server integration test so the proxy-header behavior remains covered automatically. A dependency vulnerability scan and further authorized testing in a local lab would add evidence, but neither was performed for this report.
 
-**Automated suite:** 116 cases passed (`docs/evidence/pytest-output.txt`).
-
-**Selected allowed and denied requests (from the live demo):**
-
-| Request | Expected | Actual |
-|---|---|---|
-| `GET /me` without a token | 401 | 401 |
-| `GET /me` with a tampered token | 401 | 401 |
-| alice creates a valid ticket | 201 | 201 |
-| alice sends an unknown field `owner` | 422 | 422 |
-| form data instead of JSON | 415 | 415 |
-| bob reads alice's ticket | 404 | 404 |
-| carol (agent) reads alice's ticket | 200 | 200 |
-| alice (user) lists all accounts | 403 | 403 |
-| dave (admin) lists all accounts | 200 | 200 |
-| alice makes herself admin | 403 | 403 |
-| carol (agent) deletes a ticket | 403 | 403 |
-| dave (admin) deletes a ticket | 204 | 204 |
-| 6th login attempt in a minute | 429 | 429 |
-
-**Mutation experiment:** all five inserted weaknesses were detected (2, 2, 2, 4 and 5 tests failed respectively). The five were: any user can list accounts, any user can delete tickets, any user can read any ticket, unknown fields accepted, and unlimited login attempts. The retest on the unmodified code passed all 116 cases.
-
-**One failure found and fixed.** The first live run of the demo client showed one failed check: a request with a forged `X-Forwarded-For` header after the login limit was reached returned 401 instead of 429, so the limit had been bypassed. The unit tests had not caught it because `TestClient` does not go through uvicorn. The server log showed the request arriving from the forged address `203.0.113.9`. The cause is that uvicorn trusts forwarding headers from 127.0.0.1 by default and rewrites the client address [20]. Starting uvicorn with `--no-proxy-headers` fixed it, and the same check then returned 429 (`docs/evidence/xff-before-after.txt`). The README now requires the flag. The lesson is that a control can be correct in the application code and still be undone by the way the server is started, so tests must also run against the real server.
-
-## 7. Limitations
-
-- **State is in memory.** Users, tickets and rate-limit counters reset on restart and are not shared between processes, so the limiter would not work correctly with several workers.
-- **No HTTPS.** The demo runs over HTTP on localhost. TLS is not implemented or tested.
-- **Body size is capped by the `Content-Length` header only,** so a chunked upload without that header is not capped. A production service should cap the bytes actually read, or rely on a reverse proxy.
-- **No refresh tokens, token revocation or multi-factor authentication.** A stolen token works until it expires after 15 minutes.
-- **Rate limiting by address only.** Users behind one shared address share a limit, and an attacker with many addresses is not slowed.
-- **Symmetric signing key held by the server.** It is generated at start-up or read from an environment variable and is not rotated.
-- **The tests are not a penetration test.** They show that the checks I thought of work; they do not prove that no vulnerability exists.
-
-## 8. Future work
-
-Add a persistent database and a shared rate-limit store; enforce the byte cap on streamed bodies; add refresh tokens with revocation; add account lockout or progressive delays; add an automated test that starts a real server so the proxy-header issue is covered by the suite; run a dependency vulnerability scan; and test the API with a proxy tool such as OWASP ZAP in my own lab.
-
-## 9. Use of AI tools
+## 8. Use of AI tools
 
 Claude and GitHub Copilot helped draft code and documents. I ran and reviewed the project.
 
-## 10. Sources
+## 9. Sources and supporting evidence
 
-Full list with URLs, access dates and what each was used for: `references.md`. Numbers in brackets above refer to that table.
+Bracketed source numbers refer to `references.md`, which records titles, URLs, access-date notes, and how each source was used. The specific WSTG authorization URL redirected to a general landing page and the Uvicorn URL did not resolve during the reference check; see the notes in that file.
+
+Primary project evidence:
+
+- Automated run: `docs/evidence/pytest-output.txt`
+- Live requests: `docs/evidence/demo-output.txt`
+- Mutation results: `docs/evidence/mutation-check-output.txt` and `docs/evidence/mutation-results.json`
+- Before/after launch behavior: `docs/evidence/xff-before-after.txt`
+- Expected/actual matrix: `docs/test-matrix.md`
+- Scope and synthetic data: `docs/scope-and-ethics.md`
