@@ -6,6 +6,7 @@ Task 2, Group A (Ethical Hacking & Web Application Security).
 A small **local** helpdesk-ticket API (FastAPI) with authentication, role checks, input validation and rate limiting, plus a pytest suite that tests both allowed and denied requests.
 
 - Video: `<ADD VIDEO LINK AFTER UPLOAD>`
+- Repository: [GitHub](https://github.com/hansalsavaliya200-alt/secure-local-api-test-suite-Hansal-Savaliya2424)
 - Technical report: [`report/technical-report.pdf`](report/technical-report.pdf)
 - Test matrix: [`docs/test-matrix.md`](docs/test-matrix.md)
 

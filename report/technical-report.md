@@ -6,7 +6,7 @@
 |---|---|
 | **Author** | Hansal Savaliya · Intern ID 2424 |
 | **Report date** | 13 November 2026 |
-| **Repository** | `<ADD GITHUB URL>` |
+| **Repository** | https://github.com/hansalsavaliya200-alt/secure-local-api-test-suite-Hansal-Savaliya2424 |
 | **Demonstration video** | `<ADD VIDEO URL>` |
 | **Project scope** | Defensive test application bound to `127.0.0.1` |
 
