@@ -101,3 +101,54 @@ a {
   color: #185b8f;
   text-decoration: none;
 }
+
+@media print {
+  @page {
+    margin: 12mm 12mm 14mm;
+  }
+
+  body {
+    font-size: 9pt;
+    line-height: 1.28;
+  }
+
+  h1 {
+    font-size: 22pt;
+  }
+
+  h2 {
+    font-size: 13pt;
+    margin: 12pt 0 5pt;
+    padding-bottom: 2pt;
+  }
+
+  h3 {
+    font-size: 10pt;
+    margin: 8pt 0 3pt;
+  }
+
+  p {
+    margin: 3pt 0 5pt;
+  }
+
+  ul, ol {
+    margin: 2pt 0 5pt;
+  }
+
+  li {
+    margin: 1pt 0;
+  }
+
+  table {
+    font-size: 7.8pt;
+    margin: 5pt 0 7pt;
+  }
+
+  th, td {
+    padding: 3pt 4pt;
+  }
+
+  pre {
+    padding: 5pt 7pt;
+  }
+}

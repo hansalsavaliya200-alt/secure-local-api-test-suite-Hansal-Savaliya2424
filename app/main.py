@@ -8,6 +8,7 @@ from fastapi import Depends, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .config import Settings
 from .deps import get_current_user, require_roles
@@ -19,6 +20,57 @@ from .store import Store, User
 
 log = logging.getLogger("secure-api")
 DOC_PATHS = ("/docs", "/redoc", "/openapi.json")
+
+
+class RequestBodyLimitMiddleware:
+    def __init__(self, app: ASGIApp, max_body_bytes: int):
+        self.app = app
+        self.max_body_bytes = max_body_bytes
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        body = bytearray()
+        disconnect_message: Message | None = None
+        while True:
+            message = await receive()
+            if message["type"] == "http.request":
+                chunk = message.get("body", b"")
+                if len(body) + len(chunk) > self.max_body_bytes:
+                    request = Request(scope, receive=receive)
+                    response = error_response(request, 413, "payload_too_large", "Request body too large.")
+                    await response(scope, receive, send)
+                    return
+                body.extend(chunk)
+                if not message.get("more_body", False):
+                    break
+            else:
+                disconnect_message = message
+                break
+
+        messages: list[Message] = []
+        if disconnect_message is None or body:
+            messages.append({
+                "type": "http.request",
+                "body": bytes(body),
+                "more_body": disconnect_message is not None,
+            })
+        if disconnect_message is not None:
+            messages.append(disconnect_message)
+
+        message_index = 0
+
+        async def replay_receive() -> Message:
+            nonlocal message_index
+            if message_index < len(messages):
+                message = messages[message_index]
+                message_index += 1
+                return message
+            return await receive()
+
+        await self.app(scope, replay_receive, send)
 
 
 def public_ticket(t: dict) -> dict:
@@ -34,6 +86,7 @@ def create_app(settings: Settings | None = None, clock=time.monotonic) -> FastAP
     settings = settings or Settings.from_env()
     docs = {} if settings.enable_docs else {"docs_url": None, "redoc_url": None, "openapi_url": None}
     app = FastAPI(title="Secure Local Ticket API", **docs)
+    app.add_middleware(RequestBodyLimitMiddleware, max_body_bytes=settings.max_body_bytes)
     app.state.settings = settings
     app.state.store = Store()
     app.state.limiter = SlidingWindowLimiter(clock)

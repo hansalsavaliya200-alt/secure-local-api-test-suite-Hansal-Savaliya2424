@@ -1,15 +1,15 @@
-============================= test session starts =============================
+﻿============================= test session starts =============================
 platform win32 -- Python 3.12.10, pytest-9.2.0, pluggy-1.7.0
 rootdir: D:\Files and folders\secure-local-api-task2\secure-local-api
 configfile: pytest.ini
 testpaths: tests
 plugins: anyio-4.16.0
-collected 117 items
+collected 119 items
 
 tests\test_auth.py .............................                         [ 24%]
-tests\test_errors_headers.py ...........                                 [ 34%]
-tests\test_ratelimit.py ........                                         [ 41%]
-tests\test_rbac.py ................................                      [ 68%]
-tests\test_validation.py .....................................           [100%]
+tests\test_errors_headers.py ...........                                 [ 33%]
+tests\test_ratelimit.py ........                                         [ 40%]
+tests\test_rbac.py ................................                      [ 67%]
+tests\test_validation.py .......................................         [100%]
 
-============================= 117 passed in 4.15s =============================
+============================= 119 passed in 3.67s =============================

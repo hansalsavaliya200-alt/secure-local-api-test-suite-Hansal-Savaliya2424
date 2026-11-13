@@ -39,6 +39,7 @@ CURATED = [
     ("Edge", "test_title_length_boundaries", "Title of 100 vs 101 characters", "100 accepted, 101 rejected"),
     ("Edge", "test_description_length_boundaries", "Description of 1000 vs 1001 characters", "1000 accepted, 1001 rejected"),
     ("Edge", "test_oversized_body_is_413", "Body above the size limit", "413"),
+    ("Edge", "test_chunked_oversized_body_is_413", "Chunked body above the size limit without Content-Length", "413"),
     ("Edge", "test_malformed_ticket_ids_are_404_not_500", "Ticket ID that is not a UUID", "404, no crash"),
     ("Edge", "test_limit_resets_after_the_window", "Wait out the 60 s window (fake clock)", "Login allowed again"),
     ("Edge", "test_forged_forwarding_header_cannot_bypass_the_limit", "New X-Forwarded-For on each attempt", "Still limited (429)"),

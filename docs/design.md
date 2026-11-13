@@ -2,7 +2,7 @@
 
 ## Request pipeline
 
-1. **Pre-check middleware** (before routing): rate limit by client address, then `Content-Length` (400/413), then `Content-Type` for bodies (415). Cheap checks run first so abusive requests cost little.
+1. **Pre-check middleware** (before routing): rate limit by client address, then validate `Content-Length` (400/413), then `Content-Type` for bodies (415). A bounded ASGI body reader also enforces the 10 KiB limit when a request is streamed or its declared length is inaccurate.
 2. **Authentication** (`get_current_user`): parse `Authorization: Bearer`, verify the JWT, load the user from the store. Any failure is the same `401` with `WWW-Authenticate: Bearer`.
 3. **Role check** (`require_roles`): `403` if the user's *current* role is not allowed.
 4. **Validation**: strict Pydantic models. Unknown fields are rejected, which blocks mass assignment (for example sending `owner`).
@@ -26,4 +26,4 @@
 
 ## Known limitations
 
-See the report. Main ones: in-memory state, single process, HTTP only, `Content-Length`-only size cap, no token revocation.
+See the report. Main ones: in-memory state, single process, HTTP only, no token revocation.

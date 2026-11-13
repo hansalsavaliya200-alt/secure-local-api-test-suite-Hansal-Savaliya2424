@@ -8,7 +8,7 @@
         "tests/test_rbac.py::test_admin_users_list_by_role[alice-403]",
         "tests/test_rbac.py::test_admin_users_list_by_role[carol-403]"
       ],
-      "summary": "2 failed, 115 passed in 4.08s"
+      "summary": "2 failed, 117 passed in 3.68s"
     },
     {
       "mutation": "MUT:rbac-delete",
@@ -18,7 +18,7 @@
         "tests/test_rbac.py::test_delete_ticket_is_admin_only[alice-403]",
         "tests/test_rbac.py::test_delete_ticket_is_admin_only[carol-403]"
       ],
-      "summary": "2 failed, 115 passed in 4.22s"
+      "summary": "2 failed, 117 passed in 3.69s"
     },
     {
       "mutation": "MUT:ticket-ownership",
@@ -28,7 +28,7 @@
         "tests/test_rbac.py::test_foreign_ticket_and_missing_ticket_look_identical",
         "tests/test_rbac.py::test_user_cannot_read_another_users_ticket"
       ],
-      "summary": "2 failed, 115 passed in 4.21s"
+      "summary": "2 failed, 117 passed in 3.72s"
     },
     {
       "mutation": "MUT:forbid-extra",
@@ -40,7 +40,7 @@
         "tests/test_rbac.py::test_owner_is_taken_from_token_not_body",
         "tests/test_validation.py::test_invalid_ticket_bodies_are_rejected[payload8]"
       ],
-      "summary": "4 failed, 113 passed in 4.21s"
+      "summary": "4 failed, 115 passed in 3.77s"
     },
     {
       "mutation": "MUT:login-limit",
@@ -53,11 +53,11 @@
         "tests/test_ratelimit.py::test_limit_resets_after_the_window",
         "tests/test_ratelimit.py::test_login_is_limited_after_five_attempts"
       ],
-      "summary": "5 failed, 112 passed in 4.57s"
+      "summary": "5 failed, 114 passed in 4.25s"
     }
   ],
   "retest_on_real_code": {
     "passed": true,
-    "summary": "117 passed in 4.10s"
+    "summary": "119 passed in 3.71s"
   }
 }

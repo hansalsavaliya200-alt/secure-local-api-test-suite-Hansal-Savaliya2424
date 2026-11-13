@@ -19,17 +19,17 @@ toc-depth: 2
 
 This project implements a small helpdesk-ticket API with authentication, role-based and object-level authorization, request validation, and rate limiting. The purpose was not just to demonstrate successful requests: the test suite also checks denied requests, boundary values, and whether tests fail when a control is deliberately weakened in a temporary project copy.
 
-Verification on 13 November 2026 produced **117 passing pytest cases** across **76 test functions**, a successful live demo, and detection of all **five** injected test mutations. A live test also exposed an interaction between Uvicorn's proxy-header handling and the application's address-based login limit. Launching with `--no-proxy-headers` corrected the observed behavior; the before-and-after output is retained in the evidence directory.
+The latest recorded verification produced **119 passing pytest cases** across **78 test functions**, a successful live demo, and detection of all **five** injected test mutations. A live test also exposed an interaction between Uvicorn's proxy-header handling and the application's address-based login limit. Launching with `--no-proxy-headers` corrected the observed behavior; the before-and-after output is retained in the evidence directory.
 
 These are results from a controlled local demonstration, not a penetration test, production readiness assessment, or proof that the API is free of vulnerabilities.
 
 | Project measure | Recorded result |
 |---|---|
-| Automated suite | 117 passed; 76 test functions |
-| Live demo | All checks passed against `127.0.0.1:8001` |
+| Automated suite | 119 passed; 78 test functions |
+| Live demo | All checks passed against `127.0.0.1:8011` |
 | Mutation experiment | 5 of 5 injected weaknesses detected |
-| Retest after mutations | 117 passed on the unmodified code |
-| Generated test matrix | 76 of 76 test functions pass |
+| Retest after mutations | 119 passed on the unmodified code |
+| Generated test matrix | 78 of 78 test functions pass |
 
 ## 1. Objective and scope
 
@@ -85,7 +85,7 @@ Authentication establishes identity; authorization is evaluated separately. A JW
 | Role authorization | Route dependencies check the current server-side role. A logged-in user without the required role receives `403` [14]. |
 | Ticket ownership | Users can access their own tickets. A foreign ticket and a missing ticket both return `404` to avoid confirming that a ticket exists [6][14]. |
 | Request validation | Pydantic models reject extra fields, constrain lengths and enumerated values, and reject disallowed control characters [15][16]. |
-| Request handling | Non-JSON request bodies receive `415`; requests over the configured 10 KiB `Content-Length` limit receive `413` [17]. |
+| Request handling | Non-JSON request bodies receive `415`; request bodies over the configured 10 KiB limit receive `413`, including streamed bodies without `Content-Length` [17]. |
 | Rate limiting | Sliding windows use the ASGI client address and allow 5 login requests per 60 seconds and 60 requests per 60 seconds on other routes; excess requests receive `429` and `Retry-After` [11][17]. |
 | Response/log hardening | Standardized errors, generic `500` responses, request IDs, security headers, and logs that omit query strings and credentials [17][18]. Interactive API docs are disabled by default. |
 
@@ -132,6 +132,8 @@ Verification uses three complementary layers because an in-process test client d
 
 The curated expected/actual matrix is generated from pytest's JUnit XML by `scripts/build_test_matrix.py`. Evidence files are saved in `docs/evidence/`; the report summarizes selected cases rather than replacing that detailed matrix.
 
+The request-size regression tests send asynchronous HTTPX streams through ASGI without a `Content-Length` header. They verify that an oversized stream is rejected with `413` and that an in-limit stream is replayed intact to the route.
+
 ### Test environment and repeatability
 
 | Item | Recorded value |
@@ -139,7 +141,7 @@ The curated expected/actual matrix is generated from pytest's JUnit XML by `scri
 | Operating system | Windows |
 | Python | 3.12.10 |
 | Test runner | pytest 9.2.0 |
-| Application target | `127.0.0.1`; captured live demo used port `8001` because `8000` was occupied |
+| Application target | `127.0.0.1`; captured live demo used port `8011` |
 | Test state | Fresh application/store fixtures; synthetic identities and tickets |
 | Time-dependent rate-limit tests | Injectable clock, so boundary and reset checks do not sleep |
 | Mutation isolation | Each weakened control is applied in a temporary project copy; the working source is retested unmodified |
@@ -158,17 +160,17 @@ python -m pytest
 python scripts/mutation_check.py
 ```
 
-In a first terminal, create an ephemeral local signing key and start the API. Port `8000` is the documented default; `8001` was used for the captured demo because `8000` was already occupied on that machine.
+In a first terminal, create an ephemeral local signing key and start the API. Port `8000` is the documented default; the captured demo used the available alternate port `8011`.
 
 ```powershell
 $env:APP_SECRET_KEY = python -c "import secrets; print(secrets.token_urlsafe(40))"
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --no-proxy-headers
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8011 --no-proxy-headers
 ```
 
 In a second terminal:
 
 ```powershell
-python scripts/demo_requests.py http://127.0.0.1:8001
+python scripts/demo_requests.py http://127.0.0.1:8011
 ```
 
 Use the documented `--no-proxy-headers` option for the local demo. If running behind a trusted reverse proxy in another environment, configure only the actual proxy as trusted; do not treat a client-supplied forwarding header as identity. The demo applies a per-address login limit, so wait 60 seconds before repeating it.
@@ -177,7 +179,7 @@ Use the documented `--no-proxy-headers` option for the local demo. If running be
 
 ### Automated cases
 
-The captured pytest run used Python 3.12.10 and pytest 9.2.0. It collected 117 cases and completed with **117 passed in 4.15 seconds**. The principal evidence is `docs/evidence/pytest-output.txt`.
+The captured pytest run used Python 3.12.10 and pytest 9.2.0. It collected 119 cases and completed with **119 passed**. The principal evidence is `docs/evidence/pytest-output.txt`.
 
 The case counts below are taken from the captured JUnit XML; parametrized tests contribute more than one case.
 
@@ -187,8 +189,8 @@ The case counts below are taken from the captured JUnit XML; parametrized tests 
 | `test_errors_headers.py` | 11 | Health response shape, safe errors, security headers, request IDs, logging |
 | `test_ratelimit.py` | 8 | Thresholds, retry metadata, expiry/reset, forwarded-header behavior |
 | `test_rbac.py` | 32 | Role checks, ownership, role updates, administrative actions |
-| `test_validation.py` | 37 | Schema constraints, content types, body size, boundary and malformed input |
-| **Total** | **117** | **76 test functions, including parametrized cases** |
+| `test_validation.py` | 39 | Schema constraints, content types, streamed body size, boundary and malformed input |
+| **Total** | **119** | **78 test functions, including parametrized cases** |
 
 | Scenario | Expected | Actual |
 |---|---:|---:|
@@ -203,6 +205,7 @@ The case counts below are taken from the captured JUnit XML; parametrized tests 
 | Form body instead of JSON | `415` | `415` |
 | Ticket title at 100 / 101 characters | `201` / `422` | `201` / `422` |
 | Request over configured size limit | `413` | `413` |
+| Chunked request without `Content-Length`, above the 10 KiB limit | `413` | `413`; in-limit chunked body remains accepted |
 | Sixth login attempt within the window | `429` with `Retry-After` | `429` |
 | Malformed ticket UUID | `404`, not `500` | `404` |
 
@@ -227,7 +230,7 @@ The shared `01_WEB_SECURITY` resource folder contains mock CSV fixtures describi
 
 ### Mutation experiment: can the tests detect weakened controls?
 
-Every listed weakness was inserted only into a temporary copy. All five mutations were detected; the unmodified code then passed all 117 cases. The run is preserved in `docs/evidence/mutation-check-output.txt` and `docs/evidence/mutation-results.json`.
+Every listed weakness was inserted only into a temporary copy. All five mutations were detected; the unmodified code then passed all 119 cases. The run is preserved in `docs/evidence/mutation-check-output.txt` and `docs/evidence/mutation-results.json`.
 
 | Deliberately weakened control in temporary copy | Failing tests | Detected |
 |---|---:|---|
@@ -248,7 +251,7 @@ The 15 failures above are test detections across the five separate mutation runs
 | Reject malformed and excessive input | Schema, boundary, content-type, UUID, and size tests | Expected `422`, `415`, `413`, or `404` responses passed |
 | Limit repeated login attempts | Sliding-window tests, live sixth-attempt check, mutation test | `429` and `Retry-After` observed; removal of the limit was detected |
 | Avoid leaking sensitive details | Error-shape, input non-echo, header, and logging tests | Generic errors and expected security/logging properties passed |
-| Ensure tests detect selected regressions | Five temporary-copy mutations and real-code retest | All five detected; real code passed 117 cases |
+| Ensure tests detect selected regressions | Five temporary-copy mutations and real-code retest | All five detected; real code passed 119 cases |
 
 ## 6. Findings and remediation
 
@@ -262,13 +265,13 @@ The table distinguishes controls verified by tests from the configuration behavi
 | F-04 · Control verified | Login limiting in app tests and the corrected local launch | Five attempts were allowed; the next was limited with `429` and `Retry-After`. A fake clock verified window expiry. |
 | F-05 · Configuration issue corrected for local demo | Initial live launch exposed a forwarded-header/rate-limit interaction | With default Uvicorn proxy-header handling, the check returned `401` instead of `429`. Starting with `--no-proxy-headers` made the same check return `429`; the live demo then passed. Before/after output is in `docs/evidence/xff-before-after.txt`. |
 | F-06 · Control verified | The health endpoint exposes only its status field in the tested response | `GET /health` returned exactly `{"status":"ok"}`; a focused regression test now guards the response shape. |
+| F-07 · Control strengthened | The original size check did not account for a streamed body without `Content-Length` | A 12,000-byte streamed description reproduced a `422` response instead of the configured `413`. A bounded ASGI reader now rejects oversized streams; the regression suite verifies rejection and in-limit replay, and a live Uvicorn check returned `413` for an oversized stream. |
 
 **F-05 analysis and disposition.** The limiter keys on the address supplied by the ASGI request and does not read `X-Forwarded-For` itself. In the first live run, Uvicorn's default proxy-header behavior caused the forged forwarding value to be used as the apparent client address, so repeated requests were not grouped under the expected rate-limit key. `TestClient` did not exercise this server configuration. For the local-only demo, proxy-header handling was disabled; in a real proxy deployment, only the actual trusted proxy should be configured. This was corrected in the launch command, not by changing application code. Uvicorn's official settings describe proxy-header handling and the default trusted loopback addresses [20].
 
 ## 7. Limitations and residual risks
 
 - **In-memory state:** users, tickets, and rate-limit counters reset on restart and are not shared across worker processes. This is unsuitable for durable data or a multi-worker deployment.
-- **Body-size boundary:** the configured limit rejects declared `Content-Length` values above 10 KiB. A chunked body without that header is not capped by this middleware check.
 - **Rate-limit topology:** clients sharing an address share a quota, and a per-process, address-based counter is not a distributed abuse-control system.
 - **Token lifecycle:** access tokens last 15 minutes, but there is no refresh flow or revocation mechanism. A valid token can remain usable until expiry or account disablement.
 - **Signing-key lifecycle:** a random key is generated if `APP_SECRET_KEY` is unset; those tokens stop working after restart. A configured key must be at least 32 characters. Rotation and persistent secret management are not implemented.
@@ -280,7 +283,6 @@ The table distinguishes controls verified by tests from the configuration behavi
 | Priority | Recommendation | Reason |
 |---|---|---|
 | Before any broader deployment | Keep the service loopback-only unless a separately reviewed deployment design is approved; configure proxy trust explicitly | The demonstration is not designed or tested as a public service |
-| High | Enforce body limits while reading the request stream, in addition to validating `Content-Length` | The current middleware cannot cap a chunked body that omits that header |
 | High | Add a real-Uvicorn integration test for forwarded-address and rate-limit behavior | The in-process client did not reproduce the observed launch-configuration interaction |
 | Medium | Use persistent storage and a shared rate-limit backend if multiple processes are introduced | Current in-memory state is process-local and resets on restart |
 | Medium | Define token revocation and signing-key rotation procedures | Current access tokens remain valid until expiry or account disablement |

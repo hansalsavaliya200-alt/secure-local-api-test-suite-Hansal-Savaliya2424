@@ -45,7 +45,7 @@ macOS/Linux: `python3 -m venv .venv && source .venv/bin/activate && pip install 
 python -m pytest
 ```
 
-Expected: `117 passed`. Saved output: `docs/evidence/pytest-output.txt`.
+Expected: `119 passed`. Saved output: `docs/evidence/pytest-output.txt`.
 
 ## Run the API and the demo client
 
@@ -94,7 +94,7 @@ report/     technical-report.md / .pdf
 
 ## Limitations
 
-In-memory data and rate limits (reset on restart, single process); plain HTTP on localhost; no refresh tokens or revocation; body size limit uses `Content-Length` only, so chunked uploads are not capped; not a penetration test. Details in the report.
+In-memory data and rate limits (reset on restart, single process); plain HTTP on localhost; no refresh tokens or revocation; not a penetration test. Request bodies are bounded to 10 KiB, including streamed uploads. Details in the report.
 
 ## Scope and ethics
 
