@@ -14,17 +14,17 @@
 
 This project implements a small helpdesk-ticket API with authentication, role-based and object-level authorization, request validation, and rate limiting. The purpose was not just to demonstrate successful requests: the test suite also checks denied requests, boundary values, and whether tests fail when a control is deliberately weakened in a temporary project copy.
 
-Verification on 13 November 2026 produced **116 passing pytest cases** across **75 test functions**, a successful live demo, and detection of all **five** injected test mutations. A live test also exposed an interaction between Uvicorn's proxy-header handling and the application's address-based login limit. Launching with `--no-proxy-headers` corrected the observed behavior; the before-and-after output is retained in the evidence directory.
+Verification on 13 November 2026 produced **117 passing pytest cases** across **76 test functions**, a successful live demo, and detection of all **five** injected test mutations. A live test also exposed an interaction between Uvicorn's proxy-header handling and the application's address-based login limit. Launching with `--no-proxy-headers` corrected the observed behavior; the before-and-after output is retained in the evidence directory.
 
 These are results from a controlled local demonstration, not a penetration test, production readiness assessment, or proof that the API is free of vulnerabilities.
 
 | Project measure | Recorded result |
 |---|---|
-| Automated suite | 116 passed; 75 test functions |
+| Automated suite | 117 passed; 76 test functions |
 | Live demo | All checks passed against `127.0.0.1:8001` |
 | Mutation experiment | 5 of 5 injected weaknesses detected |
-| Retest after mutations | 116 passed on the unmodified code |
-| Generated test matrix | 75 of 75 test functions pass |
+| Retest after mutations | 117 passed on the unmodified code |
+| Generated test matrix | 76 of 76 test functions pass |
 
 ## 1. Objective and scope
 
@@ -103,7 +103,7 @@ Use the documented `--no-proxy-headers` option for the local demo. If running be
 
 ### Automated cases
 
-The captured pytest run used Python 3.12.10 and pytest 9.2.0. It collected 116 cases and completed with **116 passed in 3.88 seconds**. The principal evidence is `docs/evidence/pytest-output.txt`.
+The captured pytest run used Python 3.12.10 and pytest 9.2.0. It collected 117 cases and completed with **117 passed in 4.15 seconds**. The principal evidence is `docs/evidence/pytest-output.txt`.
 
 | Scenario | Expected | Actual |
 |---|---:|---:|
@@ -113,6 +113,7 @@ The captured pytest run used Python 3.12.10 and pytest 9.2.0. It collected 116 c
 | User reads own ticket / another user's ticket | `200` / `404` | `200` / `404` |
 | User or agent lists administrative accounts | `403` | `403` |
 | Admin lists accounts | `200` | `200` |
+| Health endpoint body | `{"status":"ok"}` only | `{"status":"ok"}` |
 | Client attempts to set ticket `owner` | `422` | `422` |
 | Form body instead of JSON | `415` | `415` |
 | Ticket title at 100 / 101 characters | `201` / `422` | `201` / `422` |
@@ -122,9 +123,20 @@ The captured pytest run used Python 3.12.10 and pytest 9.2.0. It collected 116 c
 
 This is a representative selection, not the complete inventory. The full curated list, including additional normal, negative, and edge cases, appears in `docs/test-matrix.md`.
 
+### Cross-check against the shared starter-pack fixtures
+
+The shared `01_WEB_SECURITY` resource folder contains mock CSV fixtures describing example endpoints and hypothetical weaknesses. These are reference material, not observations about this API; none of those fixture weaknesses is claimed as a project finding [21].
+
+| Fixture theme | Related project check | Scope distinction |
+|---|---|---|
+| Overlong input | Ticket title boundaries (100 accepted, 101 rejected) and oversized-body rejection | The fixture's `/profile` endpoint is not part of this project. |
+| Script-like input/output handling | `test_script_like_text_is_stored_as_data_and_returned_as_json` checks JSON content type, exact returned text, and `nosniff` | This is an API JSON check, not a browser-rendered HTML/XSS test. |
+| Role-restricted access | `test_admin_users_list_by_role` and ticket ownership tests | The fixture's `/admin` endpoint is not part of this project. |
+| Limited health output | `test_health_response_contains_only_status` asserts the exact `{"status":"ok"}` response | The fixture is a prompt for coverage; its hypothetical health disclosure is not a finding here. |
+
 ### Mutation experiment: can the tests detect weakened controls?
 
-Every listed weakness was inserted only into a temporary copy. All five mutations were detected; the unmodified code then passed all 116 cases. The run is preserved in `docs/evidence/mutation-check-output.txt` and `docs/evidence/mutation-results.json`.
+Every listed weakness was inserted only into a temporary copy. All five mutations were detected; the unmodified code then passed all 117 cases. The run is preserved in `docs/evidence/mutation-check-output.txt` and `docs/evidence/mutation-results.json`.
 
 | Deliberately weakened control in temporary copy | Failing tests | Detected |
 |---|---:|---|
@@ -147,6 +159,7 @@ Findings below describe observed project-test results. “Pass” means the stat
 | F-03 | Strict request schemas reject tested mass-assignment and malformed-input cases. | An `owner` field and invalid payloads were rejected; content type, field length, request size, and UUID cases returned the expected error codes. |
 | F-04 | Login limiting works in app tests and in the corrected live launch. | Five attempts were allowed, the next was limited with `429` and `Retry-After`; the fake-clock test verified window expiry. |
 | F-05 | Initial live launch exposed a forwarded-header / rate-limit interaction; the launch configuration was corrected and retested. | With Uvicorn's default proxy-header behavior, the forged `X-Forwarded-For` check returned `401` rather than the expected `429`. Starting with `--no-proxy-headers` made the same check return `429`; the live demo then passed. Before/after output is in `docs/evidence/xff-before-after.txt`. |
+| F-06 | The health endpoint exposes only its status field in the tested response. | `GET /health` returned exactly `{"status":"ok"}`; a focused regression test now guards the response shape. |
 
 **F-05 analysis.** The application's limiter keys on the address it receives from the ASGI request. In the first live run, the default server configuration trusted the forwarded address, allowing a client-supplied `X-Forwarded-For` value to appear as a different client. The in-process `TestClient` tests did not expose the server configuration interaction. Disabling proxy-header handling for this local run restored the expected per-client limit. This illustrates why deployment configuration must be included in end-to-end verification; the corrective launch option is documented in the README. The observed behavior and configuration are consistent with Uvicorn's proxy-header settings [20]; the specific reference URL could not be opened during the reference check, as noted in `references.md`.
 

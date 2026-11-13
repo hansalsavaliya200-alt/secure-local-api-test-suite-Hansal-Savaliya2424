@@ -20,6 +20,12 @@ def test_wrong_method_is_generic_405(client):
     assert response.status_code == 405 and response.json()["error"]["code"] == "method_not_allowed"
 
 
+def test_health_response_contains_only_status(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
 def test_unexpected_exception_returns_generic_500(app, auth, make_ticket, monkeypatch):
     ticket = make_ticket("alice")
     monkeypatch.setattr("app.main.public_ticket", lambda t: (_ for _ in ()).throw(RuntimeError("secret internal detail")))

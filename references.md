@@ -24,6 +24,7 @@ Access date: **13 November 2026** for sources opened during this review. Referen
 | 18 | OWASP. *Logging* | https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html | What not to log |
 | 19 | NIST. *SP 800-228: Guidelines for API Protection for Cloud-Native Systems* (updated 13 Mar 2026) | https://csrc.nist.gov/pubs/sp/800/228/upd1/final | API controls overview |
 | 20 | Uvicorn. *Settings (proxy headers, forwarded-allow-ips)* | https://www.uvicorn.org/settings/ | Explaining the proxy-header behaviour found in the demo |
+| 21 | RedKross Task 2 Starter Pack. *01_WEB_SECURITY* (shared resource folder) | https://drive.google.com/drive/folders/15PW1L567EOd1lEd0dv5g4oUSoHdBvk1o?usp=sharing | Mock validation, output-handling, role-access, and health-response fixtures used only as a coverage cross-check; not findings about this project |
 
 ## Link check notes
 

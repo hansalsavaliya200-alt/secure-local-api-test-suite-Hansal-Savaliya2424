@@ -1,28 +1,28 @@
 [MUT:rbac-admin-users] any logged-in user may list all accounts (broken access control)
-    -> DETECTED: 2 failed, 114 passed in 3.93s
+    -> DETECTED: 2 failed, 115 passed in 4.08s
        failing: tests/test_rbac.py::test_admin_users_list_by_role[alice-403]
        failing: tests/test_rbac.py::test_admin_users_list_by_role[carol-403]
 [MUT:rbac-delete] any logged-in user may delete tickets (broken access control)
-    -> DETECTED: 2 failed, 114 passed in 3.79s
+    -> DETECTED: 2 failed, 115 passed in 4.22s
        failing: tests/test_rbac.py::test_delete_ticket_is_admin_only[alice-403]
        failing: tests/test_rbac.py::test_delete_ticket_is_admin_only[carol-403]
 [MUT:ticket-ownership] any logged-in user may read anyone's ticket (IDOR)
-    -> DETECTED: 2 failed, 114 passed in 3.70s
+    -> DETECTED: 2 failed, 115 passed in 4.21s
        failing: tests/test_rbac.py::test_foreign_ticket_and_missing_ticket_look_identical
        failing: tests/test_rbac.py::test_user_cannot_read_another_users_ticket
 [MUT:forbid-extra] unknown fields such as 'owner' or 'role' are silently accepted (mass assignment)
-    -> DETECTED: 4 failed, 112 passed in 3.78s
+    -> DETECTED: 4 failed, 113 passed in 4.21s
        failing: tests/test_auth.py::test_login_rejects_malformed_bodies[payload4]
        failing: tests/test_rbac.py::test_invalid_role_values_are_rejected[payload4]
        failing: tests/test_rbac.py::test_owner_is_taken_from_token_not_body
        failing: tests/test_validation.py::test_invalid_ticket_bodies_are_rejected[payload8]
 [MUT:login-limit] unlimited password guessing on the login endpoint
-    -> DETECTED: 5 failed, 111 passed in 4.20s
+    -> DETECTED: 5 failed, 112 passed in 4.57s
        failing: tests/test_ratelimit.py::test_429_has_retry_after_and_standard_error_shape
        failing: tests/test_ratelimit.py::test_correct_password_is_also_blocked_while_limited
        failing: tests/test_ratelimit.py::test_forged_forwarding_header_cannot_bypass_the_limit
        failing: tests/test_ratelimit.py::test_limit_resets_after_the_window
        failing: tests/test_ratelimit.py::test_login_is_limited_after_five_attempts
 
-Retest on the real, unmodified code -> PASS: 116 passed in 3.68s
+Retest on the real, unmodified code -> PASS: 117 passed in 4.10s
 Results saved to docs\evidence\mutation-results.json

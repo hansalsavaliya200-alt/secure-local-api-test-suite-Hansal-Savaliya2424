@@ -19,6 +19,8 @@ for case in ET.parse(XML).getroot().iter("testcase"):
 
 # (category, test, scenario, expected)
 CURATED = [
+    ("Normal", "test_health_response_contains_only_status", "Health response exposes only its status field",
+     '`{"status":"ok"}`'),
     ("Normal", "test_login_success_returns_bearer_token", "Valid login", "200 and a bearer token"),
     ("Normal", "test_owner_can_read_own_ticket", "User reads own ticket", "200"),
     ("Normal", "test_status_change_by_role", "Agent/admin change ticket status", "200 for agent and admin"),

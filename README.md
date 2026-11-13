@@ -44,7 +44,7 @@ macOS/Linux: `python3 -m venv .venv && source .venv/bin/activate && pip install 
 python -m pytest
 ```
 
-Expected: `116 passed`. Saved output: `docs/evidence/pytest-output.txt`.
+Expected: `117 passed`. Saved output: `docs/evidence/pytest-output.txt`.
 
 ## Run the API and the demo client
 
