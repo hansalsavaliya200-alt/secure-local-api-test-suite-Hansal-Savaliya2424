@@ -43,18 +43,22 @@ What I saw: the 6th login attempt gave `429` with `Retry-After: 60`.
 ### 6. Mutation testing
 What I saw: removing 5 controls in temporary copies made tests fail every time, and the real code passed the retest. This shows the suite catches those 5 changes, not every possible bug ([mutation-results.json](evidence/mutation-results.json)).
 
-**What does this prove that "116/119 tests pass" alone does not?**
+**What does mutation testing show beyond the fact that all 119 tests passed?**
 `<WRITE 2-3 SENTENCES>`
 
-## A mistake I ran into
+## Troubleshooting record: API port binding
 
-**What happened:** the port 8000 error and the `401` instead of `429` result (see above).
+**What happened:** starting the API on port `8000` returned `WinError 10013`. I used port `8011` for the API and demo instead.
 
-**How I diagnosed it:** `<WHAT DID YOU LOOK AT? e.g. the error text, the server log, what you tried next>`
+**How I diagnosed it:** `<DESCRIBE WHAT YOU CHECKED. The saved evidence confirms the retry on port 8011, but not why Windows denied the bind on port 8000.>`
 
-**What I changed:** port 8011, and `--no-proxy-headers`.
+**What changed:** the API and demo worked on port `8011`.
 
-**What I would do differently:** `<YOUR ANSWER. Don't guess the cause of the port error if you didn't confirm it.>`
+**What I would do differently:** `<YOUR ANSWER. Describe what you would check next time; do not guess the cause if you did not confirm it.>`
+
+## Separate finding: Uvicorn proxy-header handling
+
+This was separate from the port binding error. With Uvicorn's default proxy-header handling, the forwarded-address check expected `429` but received `401`. Starting Uvicorn with `--no-proxy-headers` made that check return `429`. The before-and-after output is [xff-before-after.txt](evidence/xff-before-after.txt).
 
 ## PortSwigger labs
 
