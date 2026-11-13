@@ -1,39 +1,51 @@
 # Learning journal: Hansal Savaliya, Intern ID 2424
 
-> AI-assisted draft based on the project code, tests, and recorded verification. Review it before submission and change any first-person reflection that does not match your own understanding or experience.
+The project notes below describe implementation and recorded test evidence. Personal reflections are left for you to complete in your own words.
 
-## Concepts learned (at least 5)
+## Concepts for reflection
 
-### 1. Authentication vs authorisation
-**AI-drafted note for you to review and rewrite:** Authentication checks who is making a request; authorisation checks what that authenticated user is allowed to do. In this API, bearer-token verification authenticates a user, while role and ownership checks decide which routes and tickets that user may access.
+### 1. Authentication and authorization
 
-### 2. JWT and why the algorithm is pinned
-**AI-drafted note for you to review and rewrite:** This API accepts HS256 tokens and requires the `exp`, `iat`, `sub`, and `iss` claims. Pinning the algorithm and checking the required claims prevents accepting unsigned or incorrectly formed tokens; the issuer is also checked.
+**Project fact:** Authentication verifies the identity associated with a request. Authorization decides what that identity may do. This API verifies bearer tokens before protected requests and applies role and ownership checks to ticket operations.
 
-### 3. Role-based access control and object-level access (IDOR)
-**AI-drafted note for you to review and rewrite:** Role checks limit which actions a user can take, while ownership checks limit which individual tickets a user can access. Returning the same 404 for another user's ticket and a missing ticket avoids confirming whether that ticket exists.
+**My reflection:** `<WRITE YOUR OWN EXPLANATION OR EXAMPLE>`
+
+### 2. JWT validation
+
+**Project fact:** The API signs tokens with HS256, pins that algorithm during verification, and requires the `exp`, `iat`, `sub`, and `iss` claims. The issuer is checked as part of token validation. See [security.py](../app/security.py).
+
+**My reflection:** `<WRITE WHAT YOU UNDERSTOOD ABOUT TOKEN VALIDATION>`
+
+### 3. Role-based and object-level access control
+
+**Project fact:** Roles determine which actions a user may perform; ownership checks determine which ticket records they may access. A user requesting another user's ticket receives the same 404 response as for a missing ticket.
+
+**My reflection:** `<WRITE YOUR OWN EXAMPLE OF WHY BOTH CHECKS MATTER>`
 
 ### 4. Input validation and mass assignment
-**AI-assisted draft for you to review:** The API validates ticket fields for type, length, allowed values, and disallowed control characters. It also rejects unknown fields such as `owner`, so a client cannot choose who owns a ticket by adding an extra property to the request. The tests check both boundary values and rejected payloads.
 
-### 5. Rate limiting and why `X-Forwarded-For` cannot be trusted
-**AI-assisted draft for you to review:** The login endpoint permits five attempts in a 60-second window and then returns `429` with a `Retry-After` header. The live test also showed that rate limiting depends on server configuration: for this local run, Uvicorn's proxy-header handling caused a forged `X-Forwarded-For` value to appear as a different client. Forwarded addresses should only be trusted from a correctly configured proxy.
+**Project fact:** Request models reject unknown fields, enforce types and length limits, and check text for disallowed control characters. The tests also cover invalid content types and oversized request bodies. See [models.py](../app/models.py) and [test-matrix.md](test-matrix.md).
 
-### 6. (Optional) Mutation testing
-**AI-assisted draft for you to review:** Mutation testing checks whether tests notice when a security control is weakened. In this project, five weaknesses were introduced in temporary copies; the test suite detected all five, and the unmodified project passed its retest. This provides evidence that the selected tests catch those specific regressions, not proof that every possible flaw has been found.
+**My reflection:** `<WRITE WHAT INPUT CASE OR TEST YOU FOUND MOST IMPORTANT>`
 
-## A real failure in the recorded project run
+### 5. Rate limiting and forwarded client addresses
 
-> This entry is based on the recorded live run. Keep it as your personal reflection only if it matches what you experienced; otherwise revise it.
+**Project fact:** Login is limited to five attempts per minute per client, with `429` and `Retry-After` on excess attempts. The local demo uses Uvicorn's `--no-proxy-headers` option so client-supplied forwarding headers do not change the address used by the limiter.
 
-**What failed:** The live demo's forwarded-address check expected `429` but received `401` when the API was started with Uvicorn's default proxy-header handling.
+**My reflection:** `<WRITE WHAT YOU LEARNED ABOUT RATE LIMITS OR TRUSTED PROXIES>`
 
-**Diagnosis recorded:** The server treated the client-supplied `X-Forwarded-For` value as the request address. Changing that header made requests appear to come from different clients to the address-based limiter, so the expected limit was not reached.
+### 6. Mutation testing
 
-**What changed:** The local demo server was restarted with `--no-proxy-headers`. The same check then returned `429`, and the live demo passed. No application code was changed to obtain this result.
+**Project fact:** Five security controls were weakened in temporary copies and all five changes were detected by failing tests. The unmodified suite passed its retest. This provides evidence for those specific test cases; it does not prove that the API has no other defects. See [mutation-results.json](evidence/mutation-results.json).
 
-**Follow-up lesson (AI-assisted draft):** Include the real server launch configuration in end-to-end checks early. The in-process test client did not expose this Uvicorn-specific behavior.
+**My reflection:** `<WRITE WHAT THE MUTATION RESULTS TELL YOU AND WHAT THEY DO NOT>`
 
-## PortSwigger labs
+## Recorded project issue: local proxy-header behavior
 
-`<WRITE YOUR OWN SUMMARY AFTER PROVIDING YOUR REAL LAB DETAILS>`
+The initial live-demo record shows the forwarded-address rate-limit check expected `429` but received `401` with Uvicorn's default proxy-header handling. The follow-up run used `--no-proxy-headers`; the same check then returned `429`, and the demo passed. The before/after record is in [xff-before-after.txt](evidence/xff-before-after.txt).
+
+**My account of the issue:** `<WRITE WHAT YOU PERSONALLY OBSERVED, HOW YOU DIAGNOSED IT, WHAT YOU CHANGED, AND THE RESULT. If this was not your own experience, describe a real failure you personally encountered instead.>`
+
+## PortSwigger reflection
+
+The confirmed lab records are in [portswigger-lab-log.md](portswigger-lab-log.md). Add your personal takeaways there in your own words.
