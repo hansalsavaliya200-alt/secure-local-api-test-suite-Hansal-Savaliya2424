@@ -1,3 +1,8 @@
+---
+toc: true
+toc-depth: 2
+---
+
 # Secure Local API and Test Suite
 
 ## Task 2 · Group A · Ethical Hacking & Web Application Security
@@ -40,7 +45,31 @@ The project tests four connected areas: authentication and token handling, funct
 
 All API and live-demo requests target `127.0.0.1`. Demo accounts (`alice`, `bob`, `carol`, `dave`), tickets, and test values are fictional. No real user credentials, personal data, or third-party targets were used for the API tests. The complete scope statement and data provenance are in `docs/scope-and-ethics.md`.
 
-## 2. System design
+| Scope boundary | Included | Excluded |
+|---|---|---|
+| Application | This repository's FastAPI service on loopback | Public deployment, external services, and other people's systems |
+| Data | Synthetic, in-memory users, tickets, tokens, and test payloads | Real accounts, live customer data, and production secrets |
+| Verification | Automated tests, the local HTTP demo, and temporary-copy mutations | A penetration test, external scanning, or a claim of production readiness |
+| Training resources | PortSwigger Academy labs in PortSwigger's own lab environment | Testing any unrelated site or network |
+
+The success criteria were observable behavior rather than a claim that the system is vulnerability-free: expected requests should succeed, unauthorized and malformed requests should be rejected consistently, the local demo should pass through the real ASGI server, and deliberately weakened controls should cause tests to fail.
+
+## 2. Threat model and security objectives
+
+This is a small local training API, so the threat model is intentionally bounded. It considers an unauthenticated caller able to send requests to the local service, an authenticated user attempting actions outside their role or ticket ownership, and malformed or repeated requests. It does not model a remote production deployment, a compromised operating system, or a distributed multi-worker service.
+
+| Asset or boundary | Relevant threat | Security objective |
+|---|---|---|
+| User identity and bearer tokens | Forged, altered, expired, or unsigned token; password guessing | Verify signed tokens with fixed rules; limit login attempts; avoid logging credentials |
+| Ticket records and ownership | A user reads another user's ticket or supplies an `owner` field | Derive ownership from verified identity and enforce object-level checks |
+| Administrative actions | A lower-privileged user lists accounts, changes roles, or deletes tickets | Require the current server-side role for each operation |
+| Request parser and application resources | Invalid fields, oversized bodies, invalid media types, or excessive requests | Bound input, reject unsupported shapes, and return predictable errors |
+| Response and logs | Internal exception detail or submitted values disclose sensitive data | Keep errors generic, avoid reflecting input, and exclude credentials and query strings from logs |
+| Client address and rate-limit key | An untrusted forwarding header changes the apparent client | Key limits from the address supplied by the ASGI request and configure proxy trust explicitly |
+
+The trust boundaries are the HTTP request entering the ASGI application, the bearer token being verified, the server-side in-memory store, and the Uvicorn deployment configuration. These boundaries explain why both in-process tests and a live local-server check are included. The detailed allowed-use rules and synthetic-data provenance are in `docs/scope-and-ethics.md`.
+
+## 3. System design
 
 The application is a FastAPI service with an in-memory user/ticket store. Its request path is deliberately ordered so inexpensive controls run before route work:
 
@@ -57,12 +86,43 @@ Authentication establishes identity; authorization is evaluated separately. A JW
 | Ticket ownership | Users can access their own tickets. A foreign ticket and a missing ticket both return `404` to avoid confirming that a ticket exists [6][14]. |
 | Request validation | Pydantic models reject extra fields, constrain lengths and enumerated values, and reject disallowed control characters [15][16]. |
 | Request handling | Non-JSON request bodies receive `415`; requests over the configured 10 KiB `Content-Length` limit receive `413` [17]. |
-| Rate limiting | Sliding windows allow 5 login requests per 60 seconds and 60 requests per 60 seconds on other routes; excess requests receive `429` and `Retry-After` [11][17]. |
+| Rate limiting | Sliding windows use the ASGI client address and allow 5 login requests per 60 seconds and 60 requests per 60 seconds on other routes; excess requests receive `429` and `Retry-After` [11][17]. |
 | Response/log hardening | Standardized errors, generic `500` responses, request IDs, security headers, and logs that omit query strings and credentials [17][18]. Interactive API docs are disabled by default. |
 
 Implementation details are in `app/security.py`, `app/deps.py`, `app/models.py`, `app/ratelimit.py`, `app/main.py`, and `docs/design.md`. These controls follow the cited guidance on JWT best practices, authorization, validation, password storage, REST security, and logging [9][13][14][15][17][18].
 
-## 3. Verification method
+### Route and authorization map
+
+Authentication and authorization are separate decisions: a valid token establishes the caller's identity, while each route applies its own role or ownership rule. The current role is reloaded from the local store for each authenticated request.
+
+| Route | Access rule | Expected behavior |
+|---|---|---|
+| `GET /health` | Public | Returns only `{"status":"ok"}` |
+| `POST /auth/login` | Public, rate-limited | Valid fictional credentials receive a short-lived bearer token |
+| `GET /me` | Any authenticated role | Returns the caller's username and current role |
+| `POST /tickets` | Any authenticated role | Creates a ticket owned by the authenticated caller |
+| `GET /tickets` and `GET /tickets/{id}` | Authenticated; users see their own tickets, agents/admins may view all | A foreign individual ticket is indistinguishable from a missing ticket (`404`) |
+| `PATCH /tickets/{id}/status` | Agent or admin | Updates a non-closed ticket; unknown or closed tickets are not silently changed |
+| `DELETE /tickets/{id}` | Admin | Deletes a ticket; other roles are denied |
+| `GET /admin/users` and `PATCH /admin/users/{username}/role` | Admin | Provides administrative user operations; self-demotion is rejected with `409` |
+
+### Request and response lifecycle
+
+The middleware applies cheap request guards before route logic. Authentication then resolves identity, authorization checks current permissions, schema validation constrains input, and object-level checks enforce ticket ownership.
+
+```text
+HTTP request
+  -> rate / body-size / media-type pre-checks
+  -> bearer-token verification and user lookup (where required)
+  -> current-role authorization
+  -> strict request schema validation
+  -> ticket ownership or state check
+  -> response with request ID, security headers, and safe log entry
+```
+
+The implementation returns a uniform JSON error envelope. Validation responses identify failing fields but do not echo submitted values; unexpected server exceptions produce a generic `500` response while details remain in server logs. The logging check asserts that tokens, passwords, and query strings are not recorded.
+
+## 4. Verification method
 
 Verification uses three complementary layers because an in-process test client does not exercise every behavior of a real ASGI server.
 
@@ -71,6 +131,20 @@ Verification uses three complementary layers because an in-process test client d
 3. **Mutation experiment.** `scripts/mutation_check.py` copies the project to a temporary directory, weakens one control per copy, and runs pytest. A mutation is detected when the weakened copy fails tests. The script then retests the original, unmodified project. The real source files are not mutated.
 
 The curated expected/actual matrix is generated from pytest's JUnit XML by `scripts/build_test_matrix.py`. Evidence files are saved in `docs/evidence/`; the report summarizes selected cases rather than replacing that detailed matrix.
+
+### Test environment and repeatability
+
+| Item | Recorded value |
+|---|---|
+| Operating system | Windows |
+| Python | 3.12.10 |
+| Test runner | pytest 9.2.0 |
+| Application target | `127.0.0.1`; captured live demo used port `8001` because `8000` was occupied |
+| Test state | Fresh application/store fixtures; synthetic identities and tickets |
+| Time-dependent rate-limit tests | Injectable clock, so boundary and reset checks do not sleep |
+| Mutation isolation | Each weakened control is applied in a temporary project copy; the working source is retested unmodified |
+
+The live demo is a separate layer rather than a duplicate of `TestClient`: it validates the actual Uvicorn launch configuration and HTTP behavior. This distinction mattered for the forwarded-address failure documented below.
 
 ### Reproduction
 
@@ -99,11 +173,22 @@ python scripts/demo_requests.py http://127.0.0.1:8001
 
 Use the documented `--no-proxy-headers` option for the local demo. If running behind a trusted reverse proxy in another environment, configure only the actual proxy as trusted; do not treat a client-supplied forwarding header as identity. The demo applies a per-address login limit, so wait 60 seconds before repeating it.
 
-## 4. Test results
+## 5. Test results
 
 ### Automated cases
 
 The captured pytest run used Python 3.12.10 and pytest 9.2.0. It collected 117 cases and completed with **117 passed in 4.15 seconds**. The principal evidence is `docs/evidence/pytest-output.txt`.
+
+The case counts below are taken from the captured JUnit XML; parametrized tests contribute more than one case.
+
+| Test module | Cases | Coverage focus |
+|---|---:|---|
+| `test_auth.py` | 29 | Login, token claims, malformed credentials, current identity |
+| `test_errors_headers.py` | 11 | Health response shape, safe errors, security headers, request IDs, logging |
+| `test_ratelimit.py` | 8 | Thresholds, retry metadata, expiry/reset, forwarded-header behavior |
+| `test_rbac.py` | 32 | Role checks, ownership, role updates, administrative actions |
+| `test_validation.py` | 37 | Schema constraints, content types, body size, boundary and malformed input |
+| **Total** | **117** | **76 test functions, including parametrized cases** |
 
 | Scenario | Expected | Actual |
 |---|---:|---:|
@@ -122,6 +207,12 @@ The captured pytest run used Python 3.12.10 and pytest 9.2.0. It collected 117 c
 | Malformed ticket UUID | `404`, not `500` | `404` |
 
 This is a representative selection, not the complete inventory. The full curated list, including additional normal, negative, and edge cases, appears in `docs/test-matrix.md`.
+
+### Live HTTP demonstration
+
+The captured demo produced **24 passing checks** through Uvicorn. It covered public and unauthenticated responses, ticket creation and validation, object-level access, role-restricted operations, the login threshold, and the forged-forwarding-header case. The printed output in `docs/evidence/demo-output.txt` records each expected and actual status; no bearer-token values are printed.
+
+The initial server run did not pass every check: with Uvicorn's default proxy-header handling, the forwarded-address check returned `401` instead of `429`. The before/after record in `docs/evidence/xff-before-after.txt` shows the check passing after the local launch was changed to `--no-proxy-headers`. This is kept as a configuration finding rather than being hidden by reporting only the successful rerun.
 
 ### Cross-check against the shared starter-pack fixtures
 
@@ -148,40 +239,58 @@ Every listed weakness was inserted only into a temporary copy. All five mutation
 
 The 15 failures above are test detections across the five separate mutation runs; they are not 15 unique vulnerabilities in the final application. The original implementation was retested successfully afterward.
 
-## 5. Findings and remediation
+### Requirements-to-evidence traceability
 
-Findings below describe observed project-test results. “Pass” means the stated behavior was verified by the recorded tests; it is not a claim that the system has no other weaknesses.
+| Security objective | Verification evidence | Recorded result |
+|---|---|---|
+| Authenticate valid users and reject invalid or altered tokens | Login, malformed-token, claim, and expiry tests | Expected `200`/`401` behavior passed |
+| Enforce role and object-level permissions | RBAC tests and live role checks | Unauthorized actions returned `403`; foreign tickets returned `404` |
+| Reject malformed and excessive input | Schema, boundary, content-type, UUID, and size tests | Expected `422`, `415`, `413`, or `404` responses passed |
+| Limit repeated login attempts | Sliding-window tests, live sixth-attempt check, mutation test | `429` and `Retry-After` observed; removal of the limit was detected |
+| Avoid leaking sensitive details | Error-shape, input non-echo, header, and logging tests | Generic errors and expected security/logging properties passed |
+| Ensure tests detect selected regressions | Five temporary-copy mutations and real-code retest | All five detected; real code passed 117 cases |
+
+## 6. Findings and remediation
+
+The table distinguishes controls verified by tests from the configuration behavior observed during live verification. “Verified” means the stated behavior passed its recorded checks; it is not a claim that the system has no other weaknesses. No severity score is assigned because this was a bounded local exercise, not a vulnerability assessment.
 
 | ID | Finding | Evidence and result |
 |---|---|---|
-| F-01 | Function- and object-level authorization are enforced for tested cases. | User/agent administrative requests were denied; an owner could read their ticket; a different user received the same `404` behavior as a missing ticket. Related mutations were detected. |
-| F-02 | Token verification rejects tested invalid credentials and token forms. | Missing, modified, unsigned, expired, wrong-issuer, and wrong-key tokens were rejected with `401`. Role changes are read from the server rather than trusted from the old token. |
-| F-03 | Strict request schemas reject tested mass-assignment and malformed-input cases. | An `owner` field and invalid payloads were rejected; content type, field length, request size, and UUID cases returned the expected error codes. |
-| F-04 | Login limiting works in app tests and in the corrected live launch. | Five attempts were allowed, the next was limited with `429` and `Retry-After`; the fake-clock test verified window expiry. |
-| F-05 | Initial live launch exposed a forwarded-header / rate-limit interaction; the launch configuration was corrected and retested. | With Uvicorn's default proxy-header behavior, the forged `X-Forwarded-For` check returned `401` rather than the expected `429`. Starting with `--no-proxy-headers` made the same check return `429`; the live demo then passed. Before/after output is in `docs/evidence/xff-before-after.txt`. |
-| F-06 | The health endpoint exposes only its status field in the tested response. | `GET /health` returned exactly `{"status":"ok"}`; a focused regression test now guards the response shape. |
+| F-01 · Control verified | Function- and object-level authorization for tested cases | User/agent administrative requests were denied; an owner could read their ticket; a different user received the same `404` behavior as a missing ticket. Related mutations were detected. |
+| F-02 · Control verified | Token verification for tested invalid credentials and token forms | Missing, modified, unsigned, expired, wrong-issuer, and wrong-key tokens were rejected with `401`. Role changes are read from the server rather than trusted from the old token. |
+| F-03 · Control verified | Strict schemas and tested malformed-input defenses | An `owner` field and invalid payloads were rejected; content type, field length, request size, and UUID cases returned the expected error codes. |
+| F-04 · Control verified | Login limiting in app tests and the corrected local launch | Five attempts were allowed; the next was limited with `429` and `Retry-After`. A fake clock verified window expiry. |
+| F-05 · Configuration issue corrected for local demo | Initial live launch exposed a forwarded-header/rate-limit interaction | With default Uvicorn proxy-header handling, the check returned `401` instead of `429`. Starting with `--no-proxy-headers` made the same check return `429`; the live demo then passed. Before/after output is in `docs/evidence/xff-before-after.txt`. |
+| F-06 · Control verified | The health endpoint exposes only its status field in the tested response | `GET /health` returned exactly `{"status":"ok"}`; a focused regression test now guards the response shape. |
 
-**F-05 analysis.** The application's limiter keys on the address it receives from the ASGI request. In the first live run, the default server configuration trusted the forwarded address, allowing a client-supplied `X-Forwarded-For` value to appear as a different client. The in-process `TestClient` tests did not expose the server configuration interaction. Disabling proxy-header handling for this local run restored the expected per-client limit. This illustrates why deployment configuration must be included in end-to-end verification; the corrective launch option is documented in the README. The observed behavior and configuration are consistent with Uvicorn's proxy-header settings [20]; the specific reference URL could not be opened during the reference check, as noted in `references.md`.
+**F-05 analysis and disposition.** The limiter keys on the address supplied by the ASGI request and does not read `X-Forwarded-For` itself. In the first live run, Uvicorn's default proxy-header behavior caused the forged forwarding value to be used as the apparent client address, so repeated requests were not grouped under the expected rate-limit key. `TestClient` did not exercise this server configuration. For the local-only demo, proxy-header handling was disabled; in a real proxy deployment, only the actual trusted proxy should be configured. This was corrected in the launch command, not by changing application code. The Uvicorn settings URL is recorded but was not reachable during the reference check, as noted in `references.md`.
 
-## 6. Limitations and residual risks
+## 7. Limitations and residual risks
 
-- **In-memory storage and limiter:** users, tickets, and counters reset on restart and are not shared across worker processes. This design is for a small local demo, not a multi-worker service.
-- **Local HTTP only:** TLS and remote deployment are outside the demonstrated scope.
-- **Request-size enforcement:** the current limit checks `Content-Length`; a chunked body without that header is not capped by this check.
-- **Address-based rate limiting:** clients sharing an address share a quota, and distributed sources may not be constrained by one address-based counter.
-- **Token lifecycle:** access tokens expire after 15 minutes, but there is no refresh-token flow or token revocation. A stolen token remains usable until expiry or the associated account is disabled.
-- **Signing-key operations:** the demo accepts a sufficiently long environment key or creates a random startup key. Key rotation and persistent secret management are not implemented.
-- **Test scope:** passing tests verify selected requirements and regressions. Mutation checks show that these tests detect the inserted weaknesses, not that every possible attack or flaw has been found.
+- **In-memory state:** users, tickets, and rate-limit counters reset on restart and are not shared across worker processes. This is unsuitable for durable data or a multi-worker deployment.
+- **Body-size boundary:** the configured limit rejects declared `Content-Length` values above 10 KiB. A chunked body without that header is not capped by this middleware check.
+- **Rate-limit topology:** clients sharing an address share a quota, and a per-process, address-based counter is not a distributed abuse-control system.
+- **Token lifecycle:** access tokens last 15 minutes, but there is no refresh flow or revocation mechanism. A valid token can remain usable until expiry or account disablement.
+- **Signing-key lifecycle:** a random key is generated if `APP_SECRET_KEY` is unset; those tokens stop working after restart. A configured key must be at least 32 characters. Rotation and persistent secret management are not implemented.
+- **Transport and deployment:** the demonstrated service uses HTTP on loopback. TLS, remote deployment, proxy allow-list configuration, and multi-worker behavior were not tested.
+- **Test and mutation scope:** the suite verifies selected requirements and detects the five inserted weaknesses. It does not prove that all vulnerabilities or edge cases have been found.
 
-## 7. Recommended next steps
+## 8. Recommended next steps
 
-For a larger or production-oriented system, use persistent storage and a shared rate-limit backend; enforce limits while reading request bytes, not only from `Content-Length`; implement token revocation and key rotation; and add a real-server integration test so the proxy-header behavior remains covered automatically. A dependency vulnerability scan and further authorized testing in a local lab would add evidence, but neither was performed for this report.
+| Priority | Recommendation | Reason |
+|---|---|---|
+| Before any broader deployment | Keep the service loopback-only unless a separately reviewed deployment design is approved; configure proxy trust explicitly | The demonstration is not designed or tested as a public service |
+| High | Enforce body limits while reading the request stream, in addition to validating `Content-Length` | The current middleware cannot cap a chunked body that omits that header |
+| High | Add a real-Uvicorn integration test for forwarded-address and rate-limit behavior | The in-process client did not reproduce the observed launch-configuration interaction |
+| Medium | Use persistent storage and a shared rate-limit backend if multiple processes are introduced | Current in-memory state is process-local and resets on restart |
+| Medium | Define token revocation and signing-key rotation procedures | Current access tokens remain valid until expiry or account disablement |
+| Further verification | Run dependency review and additional authorized local-lab testing | Neither activity was performed for this report; results must be recorded only if actually completed |
 
-## 8. Use of AI tools
+## 9. Use of AI tools
 
 Claude and GitHub Copilot helped draft code and documents. I ran and reviewed the project.
 
-## 9. Sources and supporting evidence
+## 10. Sources and supporting evidence
 
 Bracketed source numbers refer to `references.md`, which records titles, URLs, access-date notes, and how each source was used. The specific WSTG authorization URL redirected to a general landing page and the Uvicorn URL did not resolve during the reference check; see the notes in that file.
 
