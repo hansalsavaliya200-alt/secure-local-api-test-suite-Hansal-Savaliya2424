@@ -1,50 +1,56 @@
 # Learning journal: Hansal Savaliya, Intern ID 2424
 
-The notes below summarize concepts used in the project and the recorded verification evidence. They are technical reference material, not personal reflections; the reflection prompts are left for you to complete in your own words.
+## What I did and observed
 
-## Project concepts and technical notes
+- I ran the pytest suite; the saved output shows **119 passed**. See [pytest-output.txt](evidence/pytest-output.txt).
+- I ran the mutation check. The recorded results show that all **five** weakened controls were detected and that the unmodified code passed its retest. See [mutation-check-output.txt](evidence/mutation-check-output.txt).
+- I ran the local demo against `127.0.0.1:8011`. It checked authentication, ticket access, input validation, role restrictions, and rate limiting, and ended with **ALL CHECKS PASSED**. See [demo-output.txt](evidence/demo-output.txt).
+- When I first tried to start the API on port `8000`, Windows returned `WinError 10013`. I used port `8011` for the API and demo instead. The recorded results show that the demo then passed; they do not establish why Windows denied the first bind.
+- A separate before-and-after run checked forwarded client addresses. With Uvicorn's default proxy-header handling, the check expected `429` but received `401`. After starting Uvicorn with `--no-proxy-headers`, it received `429`. The recorded output is [xff-before-after.txt](evidence/xff-before-after.txt).
+
+## Security concepts I tested
 
 ### 1. Authentication and authorization
 
-Authentication verifies the identity associated with a request; authorization decides which operations that identity may perform. In this API, a valid bearer token establishes the request identity, while route permissions and ticket-ownership checks determine access.
+In the demo, a request to `/me` without a token returned `401`. A user trying to list all accounts received `403`, while the admin request succeeded. The results show authentication and permission checks at different points in a request.
 
-**My reflection:** `<WRITE YOUR OWN EXPLANATION OR EXAMPLE>`
+**What I took from this:** `<ADD YOUR OWN TAKEAWAY>`
 
 ### 2. JWT validation
 
-The API signs access tokens with HS256 and pins that algorithm when verifying them. It requires `exp`, `iat`, `sub`, and `iss`, and validates the issuer. The token carries the user's identity; the role is looked up on the server for each request. See [security.py](../app/security.py).
+The demo rejected a modified token with `401`. The test suite also checks an unsigned `alg=none` token and an expired token. The API pins HS256 and requires the `exp`, `iat`, `sub`, and `iss` claims; see [security.py](../app/security.py).
 
-**My reflection:** `<WRITE WHAT YOU UNDERSTOOD ABOUT TOKEN VALIDATION>`
+**What I took from this:** `<ADD YOUR OWN TAKEAWAY>`
 
-### 3. Role-based and object-level access control
+### 3. Role and ticket-ownership checks
 
-Role checks constrain actions, while object-level checks constrain access to individual records. This API lets users access their own tickets and returns the same 404 response for another user's ticket as for a missing ticket. A role check by itself would not establish ticket ownership.
+In the recorded demo, Bob's request for Alice's ticket returned `404`, while the authorized agent could read it. The tests also check that users cannot perform admin-only actions.
 
-**My reflection:** `<WRITE YOUR OWN EXAMPLE OF WHY BOTH CHECKS MATTER>`
+**What I took from this:** `<ADD YOUR OWN TAKEAWAY>`
 
-### 4. Input validation and mass assignment
+### 4. Input validation
 
-The request models reject unknown fields, enforce types and length limits, and reject disallowed control characters. This prevents clients from supplying fields such as `owner` that the server should control. The API also rejects unsupported content types and request bodies above its configured size limit. See [models.py](../app/models.py) and [test-matrix.md](test-matrix.md).
+The demo received `422` for an unknown `owner` field and an empty title, and `415` for form data instead of JSON. The test suite also checks field boundaries and oversized request bodies. These checks are defined in [models.py](../app/models.py) and summarized in [test-matrix.md](test-matrix.md).
 
-**My reflection:** `<WRITE WHAT INPUT CASE OR TEST YOU FOUND MOST IMPORTANT>`
+**What I took from this:** `<ADD YOUR OWN TAKEAWAY>`
 
-### 5. Rate limiting and forwarded client addresses
+### 5. Rate limiting and proxy headers
 
-The login route allows five attempts per minute per client and returns `429` with `Retry-After` after the limit is reached. Forwarded-address headers should only be trusted when they come through a configured proxy. The local demo uses Uvicorn's `--no-proxy-headers` option; the recorded initial and follow-up runs are summarized below.
+The sixth login attempt in the demo received `429` with a `Retry-After` value of 60 seconds. The before-and-after record also shows why the Uvicorn launch configuration mattered for the forwarded-address check.
 
-**My reflection:** `<WRITE WHAT YOU LEARNED ABOUT RATE LIMITS OR TRUSTED PROXIES>`
+**What I took from this:** `<ADD YOUR OWN TAKEAWAY>`
 
 ### 6. Mutation testing
 
-Mutation testing checks whether tests detect selected changes that weaken controls. In this project, five changes were made in temporary copies; all five were detected, and the unmodified suite passed its retest. This is evidence about those specific regressions, not proof that every possible defect has been found. See [mutation-results.json](evidence/mutation-results.json).
+The mutation run weakened five controls in temporary copies. Each change caused relevant tests to fail, and the unmodified code passed its retest. This demonstrates that the suite detects those selected changes; it does not prove that every possible defect is covered. See [mutation-results.json](evidence/mutation-results.json).
 
-**My reflection:** `<WRITE WHAT THE MUTATION RESULTS TELL YOU AND WHAT THEY DO NOT>`
+**What I took from this:** `<ADD YOUR OWN TAKEAWAY>`
 
-## Recorded project issue: local proxy-header behavior
+## Troubleshooting reflection
 
-The initial live-demo record shows the forwarded-address rate-limit check expected `429` but received `401` with Uvicorn's default proxy-header handling. The follow-up run used `--no-proxy-headers`; the same check then returned `429`, and the demo passed. The before/after record is in [xff-before-after.txt](evidence/xff-before-after.txt).
+The recorded port issue and proxy-header check above are real project events. The files document the observed errors and the configuration changes that produced passing demo checks.
 
-**My account of the issue:** `<WRITE WHAT YOU PERSONALLY OBSERVED, HOW YOU DIAGNOSED IT, WHAT YOU CHANGED, AND THE RESULT. If this was not your own experience, describe a real failure you personally encountered instead.>`
+**My diagnosis and lesson:** `<IN YOUR OWN WORDS, describe what you checked, why you chose the workaround, and what you would do differently next time. Do not guess why Windows denied port 8000 if you did not confirm the cause.>`
 
 ## PortSwigger reflection
 
