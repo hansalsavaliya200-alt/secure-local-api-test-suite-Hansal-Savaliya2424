@@ -1,8 +1,8 @@
 # Learning journal: Hansal Savaliya, Intern ID 2424
 
-The technical notes below were drafted with AI assistance from the project implementation and recorded test evidence. They summarize observable project behavior; they are not personal reflections. Personal reflections are left for you to complete in your own words.
+The notes below summarize concepts used in the project and the recorded verification evidence. They are technical reference material, not personal reflections; the reflection prompts are left for you to complete in your own words.
 
-## AI-assisted technical reference notes
+## Project concepts and technical notes
 
 ### 1. Authentication and authorization
 
