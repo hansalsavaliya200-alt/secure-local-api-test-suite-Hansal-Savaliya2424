@@ -1,37 +1,37 @@
 # Learning journal: Hansal Savaliya, Intern ID 2424
 
-> Fill this in **in your own words** as you go. Keep only things that really happened to you. Delete the hints in italics.
+> Review the clearly labeled AI drafts below and rewrite them in your own words. Keep personal claims only if they are true for you.
 
 ## Concepts learned (at least 5)
 
 ### 1. Authentication vs authorisation
-*What is the difference? Which file shows each? (`app/deps.py`)*
+**AI-drafted note for you to review and rewrite:** Authentication checks who is making a request; authorisation checks what that authenticated user is allowed to do. In this API, bearer-token verification authenticates a user, while role and ownership checks decide which routes and tickets that user may access.
 
 ### 2. JWT and why the algorithm is pinned
-*What does `alg: none` do? Which test covers it? (`test_unsigned_alg_none_token_is_refused`)*
+**AI-drafted note for you to review and rewrite:** This API accepts HS256 tokens and requires the `exp`, `iat`, `sub`, and `iss` claims. Pinning the algorithm and checking the required claims prevents accepting unsigned or incorrectly formed tokens; the issuer is also checked.
 
 ### 3. Role-based access control and object-level access (IDOR)
-*Why does a user get 404, not 403, for someone else's ticket?*
+**AI-drafted note for you to review and rewrite:** Role checks limit which actions a user can take, while ownership checks limit which individual tickets a user can access. Returning the same 404 for another user's ticket and a missing ticket avoids confirming whether that ticket exists.
 
 ### 4. Input validation and mass assignment
-*What happens if the client sends `"owner": "dave"`?*
+`<WRITE YOUR OWN SENTENCE>`
 
 ### 5. Rate limiting and why `X-Forwarded-For` cannot be trusted
-*How does a sliding window work? Why does the limiter use the socket address?*
+`<WRITE YOUR OWN SENTENCE>`
 
 ### 6. (Optional) Mutation testing
-*What does it prove that a passing test suite alone does not?*
+`<WRITE YOUR OWN SENTENCE>`
 
 ## A mistake or failure (real one)
 
-**What happened:** *Suggested, if it happened to you: the demo client's forged-header check returned 401 instead of 429 when run against uvicorn. If you saw this yourself, say so. If not, write a different real mistake, for example a setup error such as `python` not being found.*
+**What happened:** `<WRITE A REAL MISTAKE OR FAILURE YOU PERSONALLY EXPERIENCED>`
 
-**How I diagnosed it:** *What did you look at? (server log showed the client as `203.0.113.9`.)*
+**How I diagnosed it:** `<WRITE WHAT YOU CHECKED OR OBSERVED>`
 
-**What I changed:** *`--no-proxy-headers`, and the README note.*
+**What I changed:** `<WRITE WHAT YOU CHANGED>`
 
-**What I would do differently:**
+**What I would do differently:** `<WRITE YOUR OWN SENTENCE>`
 
 ## PortSwigger labs
 
-*Summary of what the labs taught you. Details go in `portswigger-lab-log.md`.*
+`<WRITE YOUR OWN SUMMARY AFTER PROVIDING YOUR REAL LAB DETAILS>`
