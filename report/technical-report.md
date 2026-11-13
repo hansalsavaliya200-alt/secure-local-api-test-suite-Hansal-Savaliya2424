@@ -17,11 +17,11 @@ toc-depth: 2
 
 ## Executive summary
 
-This project implements a small helpdesk-ticket API with authentication, role-based and object-level authorization, request validation, and rate limiting. The purpose was not just to demonstrate successful requests: the test suite also checks denied requests, boundary values, and whether tests fail when a control is deliberately weakened in a temporary project copy.
+This project is a local helpdesk-ticket API built to demonstrate authentication, role-based and object-level authorization, request validation, and rate limiting. Its tests cover permitted and denied requests, input boundaries, and five deliberately weakened controls in temporary copies.
 
-The latest recorded verification produced **119 passing pytest cases** across **78 test functions**, a successful live demo, and detection of all **five** injected test mutations. A live test also exposed an interaction between Uvicorn's proxy-header handling and the application's address-based login limit. Launching with `--no-proxy-headers` corrected the observed behavior; the before-and-after output is retained in the evidence directory.
+The latest recorded verification passed **119 pytest cases** across **78 test functions**, completed the live demo, and detected all **five** mutations. The first live run also showed that Uvicorn's default proxy-header handling affected the address-based login limit. Using `--no-proxy-headers` corrected the local demo behavior; the before-and-after output is in the evidence directory.
 
-These are results from a controlled local demonstration, not a penetration test, production readiness assessment, or proof that the API is free of vulnerabilities.
+These results apply only to this controlled local demonstration. They are not a penetration test, a production-readiness assessment, or proof that the API is vulnerability-free.
 
 | Project measure | Recorded result |
 |---|---|
@@ -33,7 +33,7 @@ These are results from a controlled local demonstration, not a penetration test,
 
 ## 1. Objective and scope
 
-The objective was to build a repeatable, safe demonstration of common API security controls and verify both permitted and denied behavior. The implementation uses fictional accounts and tickets, and runs on the local machine. The API has three roles:
+The objective was to implement and test common API security controls using fictional accounts and tickets on the local machine. The API defines three roles:
 
 | Role | Intended permissions |
 |---|---|
@@ -41,7 +41,7 @@ The objective was to build a repeatable, safe demonstration of common API securi
 | `agent` | Read tickets and update ticket status |
 | `admin` | Administrative user and ticket operations |
 
-The project tests four connected areas: authentication and token handling, function- and object-level access control, input validation, and request-rate/resource controls. PortSwigger Academy labs are performed only in PortSwigger's lab environment; details of the two screenshot-confirmed labs are recorded separately in `docs/portswigger-lab-log.md`.
+Tests cover four areas: authentication and token handling, function- and object-level access control, input validation, and request-rate/resource controls. PortSwigger Academy labs are completed only in PortSwigger's lab environment; the two screenshot-confirmed entries are listed in `docs/portswigger-lab-log.md`.
 
 All API and live-demo requests target `127.0.0.1`. Demo accounts (`alice`, `bob`, `carol`, `dave`), tickets, and test values are fictional. No real user credentials, personal data, or third-party targets were used for the API tests. The complete scope statement and data provenance are in `docs/scope-and-ethics.md`.
 
@@ -52,11 +52,11 @@ All API and live-demo requests target `127.0.0.1`. Demo accounts (`alice`, `bob`
 | Verification | Automated tests, the local HTTP demo, and temporary-copy mutations | A penetration test, external scanning, or a claim of production readiness |
 | Training resources | PortSwigger Academy labs in PortSwigger's own lab environment | Testing any unrelated site or network |
 
-The success criteria were observable behavior rather than a claim that the system is vulnerability-free: expected requests should succeed, unauthorized and malformed requests should be rejected consistently, the local demo should pass through the real ASGI server, and deliberately weakened controls should cause tests to fail.
+Verification checks expected success and rejection behavior, runs the API through Uvicorn, and confirms that selected tests fail when controls are weakened. Passing these checks does not establish that the system is vulnerability-free.
 
 ## 2. Threat model and security objectives
 
-This is a small local training API, so the threat model is intentionally bounded. It considers an unauthenticated caller able to send requests to the local service, an authenticated user attempting actions outside their role or ticket ownership, and malformed or repeated requests. It does not model a remote production deployment, a compromised operating system, or a distributed multi-worker service.
+The threat model covers an unauthenticated caller sending requests to the local service, an authenticated user attempting actions outside their role or ticket ownership, and malformed or repeated requests. It does not cover remote production deployment, a compromised operating system, or a distributed multi-worker service.
 
 | Asset or boundary | Relevant threat | Security objective |
 |---|---|---|
@@ -67,11 +67,11 @@ This is a small local training API, so the threat model is intentionally bounded
 | Response and logs | Internal exception detail or submitted values disclose sensitive data | Keep errors generic, avoid reflecting input, and exclude credentials and query strings from logs |
 | Client address and rate-limit key | An untrusted forwarding header changes the apparent client | Key limits from the address supplied by the ASGI request and configure proxy trust explicitly |
 
-The trust boundaries are the HTTP request entering the ASGI application, the bearer token being verified, the server-side in-memory store, and the Uvicorn deployment configuration. These boundaries explain why both in-process tests and a live local-server check are included. The detailed allowed-use rules and synthetic-data provenance are in `docs/scope-and-ethics.md`.
+The main trust boundaries are the incoming HTTP request, bearer-token verification, the in-memory store, and Uvicorn configuration. Both in-process tests and a live local-server check are used because application behavior and server configuration can affect results. Scope and data provenance are described in `docs/scope-and-ethics.md`.
 
 ## 3. System design
 
-The application is a FastAPI service with an in-memory user/ticket store. Its request path is deliberately ordered so inexpensive controls run before route work:
+The FastAPI service stores users and tickets in memory. Its request path applies inexpensive checks before route handling:
 
 **Request → address-based rate limit → size/content-type checks → bearer-token verification → current role check → schema validation → ticket ownership check → response, security headers, and safe log entry**
 
@@ -120,17 +120,17 @@ HTTP request
   -> response with request ID, security headers, and safe log entry
 ```
 
-The implementation returns a uniform JSON error envelope. Validation responses identify failing fields but do not echo submitted values; unexpected server exceptions produce a generic `500` response while details remain in server logs. The logging check asserts that tokens, passwords, and query strings are not recorded.
+Errors use a consistent JSON envelope. Validation responses identify failing fields without echoing submitted values. Unexpected exceptions return a generic `500`; details remain in server logs. Tests check that logs exclude tokens, passwords, and query strings.
 
 ## 4. Verification method
 
-Verification uses three complementary layers because an in-process test client does not exercise every behavior of a real ASGI server.
+Verification has three parts: the pytest suite, a live Uvicorn demo, and a mutation experiment. The live demo covers server behavior that the in-process test client does not exercise.
 
 1. **Automated pytest suite.** The app is exercised with a fresh store and rate limiter for each test. A fake clock makes sliding-window boundaries repeatable without waiting. Cases cover positive flows, denied requests, malformed tokens, validation boundaries, error responses, role changes, and rate-limit behavior.
 2. **Live HTTP demo.** `scripts/demo_requests.py` sends requests to a running Uvicorn server and prints expected and actual status codes. This checks the API through the actual server launch path, including the forwarded-address behavior.
 3. **Mutation experiment.** `scripts/mutation_check.py` copies the project to a temporary directory, weakens one control per copy, and runs pytest. A mutation is detected when the weakened copy fails tests. The script then retests the original, unmodified project. The real source files are not mutated.
 
-The curated expected/actual matrix is generated from pytest's JUnit XML by `scripts/build_test_matrix.py`. Evidence files are saved in `docs/evidence/`; the report summarizes selected cases rather than replacing that detailed matrix.
+`scripts/build_test_matrix.py` generates the expected/actual matrix from pytest's JUnit XML. Captured command output and mutation results are stored in `docs/evidence/`; this report summarizes representative cases.
 
 The request-size regression tests send asynchronous HTTPX streams through ASGI without a `Content-Length` header. They verify that an oversized stream is rejected with `413` and that an in-limit stream is replayed intact to the route.
 
@@ -146,7 +146,7 @@ The request-size regression tests send asynchronous HTTPX streams through ASGI w
 | Time-dependent rate-limit tests | Injectable clock, so boundary and reset checks do not sleep |
 | Mutation isolation | Each weakened control is applied in a temporary project copy; the working source is retested unmodified |
 
-The live demo is a separate layer rather than a duplicate of `TestClient`: it validates the actual Uvicorn launch configuration and HTTP behavior. This distinction mattered for the forwarded-address failure documented below.
+The live demo complements `TestClient` by exercising Uvicorn's launch configuration and HTTP behavior. It exposed the forwarded-address issue described below.
 
 ### Reproduction
 
@@ -209,7 +209,7 @@ The case counts below are taken from the captured JUnit XML; parametrized tests 
 | Sixth login attempt within the window | `429` with `Retry-After` | `429` |
 | Malformed ticket UUID | `404`, not `500` | `404` |
 
-This is a representative selection, not the complete inventory. The full curated list, including additional normal, negative, and edge cases, appears in `docs/test-matrix.md`.
+The complete curated list of normal, negative, and edge cases is in `docs/test-matrix.md`.
 
 ### Live HTTP demonstration
 
@@ -255,7 +255,7 @@ The 15 failures above are test detections across the five separate mutation runs
 
 ## 6. Findings and remediation
 
-The table distinguishes controls verified by tests from the configuration behavior observed during live verification. “Verified” means the stated behavior passed its recorded checks; it is not a claim that the system has no other weaknesses. No severity score is assigned because this was a bounded local exercise, not a vulnerability assessment.
+The findings distinguish tested controls from behavior observed during live verification. “Verified” means the stated checks passed; it does not mean that no other weaknesses exist. No severity score is assigned because this was a bounded local exercise, not a vulnerability assessment.
 
 | ID | Finding | Evidence and result |
 |---|---|---|
@@ -294,7 +294,7 @@ Claude and GitHub Copilot helped draft code and documents. I ran and reviewed th
 
 ## 10. Sources and supporting evidence
 
-Bracketed source numbers refer to `references.md`, which records titles, URLs, access-date notes, and how each source was used. The WSTG citation now points to the current official authorization-testing section. The Uvicorn website could not be reached from this environment, so its official settings file on GitHub is cited instead.
+Bracketed numbers refer to `references.md`, which lists titles, URLs, access-date notes, and how each source informed the project. The WSTG citation points to the current official authorization-testing section. The Uvicorn website was unavailable during review, so the report cites Uvicorn's official settings file on GitHub.
 
 Primary project evidence:
 

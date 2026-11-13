@@ -2,7 +2,7 @@
 
 Source: https://portswigger.net/web-security. Only labs I actually completed are listed. Labs were done in PortSwigger's own lab environment, as intended.
 
-**At least 2 completed labs are confirmed by the screenshots provided. Academy profile total:** `<ENTER THE TOTAL SHOWN ON YOUR ACADEMY PROFILE>`. The screenshots confirm these two solved labs; they do not establish your account's overall total or completion dates.
+**Academy profile total (provided by you): 273.** The screenshots confirm the two solved labs below; they do not establish additional lab titles or your personal takeaways.
 
 | Date | Topic | Lab title | Level | Completed | One thing I learned (my words) | Link to my API |
 |------|-------|-----------|-------|-----------|--------------------------------|----------------|
