@@ -1,13 +1,13 @@
 # References
 
-Access date: **13 November 2026** for sources opened during this review. Reference 20 retains its previously recorded **8 November 2026** date because it could not be opened during this review. "Used for" says what I took from each.
+Access date: **13 November 2026** for sources checked during this review. References 4 and 20 were verified through their current official sources on this date. "Used for" says what I took from each.
 
 | # | Title | URL | Used for |
 |---|-------|-----|----------|
 | 1 | PortSwigger. *Web Security Academy: Free Online Training from PortSwigger* | https://portswigger.net/web-security | Background on authentication and access-control attacks; lab practice (see `docs/portswigger-lab-log.md`) |
 | 2 | OWASP. *Juice Shop - Insecure Web Application for Security Training* | https://owasp.org/www-project-juice-shop/ | Awareness of an intentionally vulnerable local target; scope rules |
 | 3 | OWASP. *Web Security Testing Guide* | https://owasp.org/www-project-web-security-testing-guide/ | Test planning and how to record evidence |
-| 4 | OWASP WSTG. *Testing for Bypassing Authorization Schema* | https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/02-Testing_for_Bypassing_Authorization_Schema | Designing denied-request tests for role checks |
+| 4 | OWASP WSTG. *4.5.2 Bypassing Authorization Schema* | https://wstg.owasp.org/latest/4-Web_Application_Security_Testing/05-Authorization/02-Bypassing_Authorization_Schema/ | Designing denied-request tests for role checks |
 | 5 | OWASP. *OWASP Cheat Sheet Series* | https://cheatsheetseries.owasp.org/ | Index for the sheets below |
 | 6 | OWASP. *OWASP Top 10 API Security Risks - 2023* | https://owasp.org/API-Security/editions/2023/en/0x11-t10/ | Threat list (broken object and function-level authorisation, resource consumption) |
 | 7 | FastAPI. *OAuth2 with Password (and hashing), Bearer with JWT tokens* | https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/ | Structure of login and bearer-token dependency |
@@ -23,10 +23,10 @@ Access date: **13 November 2026** for sources opened during this review. Referen
 | 17 | OWASP. *REST Security* | https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html | Content-Type checks, rate limiting, error handling |
 | 18 | OWASP. *Logging* | https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html | What not to log |
 | 19 | NIST. *SP 800-228: Guidelines for API Protection for Cloud-Native Systems* (updated 13 Mar 2026) | https://csrc.nist.gov/pubs/sp/800/228/upd1/final | API controls overview |
-| 20 | Uvicorn. *Settings (proxy headers, forwarded-allow-ips)* | https://www.uvicorn.org/settings/ | Explaining the proxy-header behaviour found in the demo |
+| 20 | Uvicorn. *Settings* | https://github.com/encode/uvicorn/blob/a99c1b76ee9caea67ff98e2ccc457bd372db193f/docs/settings.md | Verifying `--proxy-headers`, `--no-proxy-headers`, and the default trusted loopback addresses relevant to the live demo |
 | 21 | RedKross Task 2 Starter Pack. *01_WEB_SECURITY* (shared resource folder) | https://drive.google.com/drive/folders/15PW1L567EOd1lEd0dv5g4oUSoHdBvk1o?usp=sharing | Mock validation, output-handling, role-access, and health-response fixtures used only as a coverage cross-check; not findings about this project |
 
 ## Link check notes
 
-- Reference 4's URL redirects to the general WSTG landing page, so its specific page title could not be confirmed.
-- Reference 20 could not be opened because `www.uvicorn.org` did not resolve during this review. Its earlier recorded access date is retained and still needs your confirmation.
+- Reference 4's earlier deep link redirected; the current official WSTG page and title are now verified.
+- The `www.uvicorn.org` documentation host did not resolve in this environment. Reference 20 therefore points to the corresponding official Uvicorn settings file on GitHub, pinned to the reviewed revision.

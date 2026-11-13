@@ -263,7 +263,7 @@ The table distinguishes controls verified by tests from the configuration behavi
 | F-05 · Configuration issue corrected for local demo | Initial live launch exposed a forwarded-header/rate-limit interaction | With default Uvicorn proxy-header handling, the check returned `401` instead of `429`. Starting with `--no-proxy-headers` made the same check return `429`; the live demo then passed. Before/after output is in `docs/evidence/xff-before-after.txt`. |
 | F-06 · Control verified | The health endpoint exposes only its status field in the tested response | `GET /health` returned exactly `{"status":"ok"}`; a focused regression test now guards the response shape. |
 
-**F-05 analysis and disposition.** The limiter keys on the address supplied by the ASGI request and does not read `X-Forwarded-For` itself. In the first live run, Uvicorn's default proxy-header behavior caused the forged forwarding value to be used as the apparent client address, so repeated requests were not grouped under the expected rate-limit key. `TestClient` did not exercise this server configuration. For the local-only demo, proxy-header handling was disabled; in a real proxy deployment, only the actual trusted proxy should be configured. This was corrected in the launch command, not by changing application code. The Uvicorn settings URL is recorded but was not reachable during the reference check, as noted in `references.md`.
+**F-05 analysis and disposition.** The limiter keys on the address supplied by the ASGI request and does not read `X-Forwarded-For` itself. In the first live run, Uvicorn's default proxy-header behavior caused the forged forwarding value to be used as the apparent client address, so repeated requests were not grouped under the expected rate-limit key. `TestClient` did not exercise this server configuration. For the local-only demo, proxy-header handling was disabled; in a real proxy deployment, only the actual trusted proxy should be configured. This was corrected in the launch command, not by changing application code. Uvicorn's official settings describe proxy-header handling and the default trusted loopback addresses [20].
 
 ## 7. Limitations and residual risks
 
@@ -292,7 +292,7 @@ Claude and GitHub Copilot helped draft code and documents. I ran and reviewed th
 
 ## 10. Sources and supporting evidence
 
-Bracketed source numbers refer to `references.md`, which records titles, URLs, access-date notes, and how each source was used. The specific WSTG authorization URL redirected to a general landing page and the Uvicorn URL did not resolve during the reference check; see the notes in that file.
+Bracketed source numbers refer to `references.md`, which records titles, URLs, access-date notes, and how each source was used. The WSTG citation now points to the current official authorization-testing section. The Uvicorn website could not be reached from this environment, so its official settings file on GitHub is cited instead.
 
 Primary project evidence:
 
