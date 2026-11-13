@@ -1,63 +1,84 @@
-# Test matrix
+# Security verification matrix
 
-Generated from the latest pytest run and its JUnit report. Expected outcomes are curated; actual results and test counts come from the run. Parametrized cases are grouped by test function.
+**Project:** Build a secure local API and test suite
 
-## A. Selected tests: expected vs actual
+**Scope:** Local FastAPI demonstration using fictional data and loopback requests only.
 
-| # | Type | Scenario | Expected | Actual | Test |
-|---|------|----------|----------|--------|------|
-| 1 | Normal | Health response exposes only its status field | `{"status":"ok"}` | PASS | `test_health_response_contains_only_status` |
-| 2 | Normal | Valid login | 200 and a bearer token | PASS | `test_login_success_returns_bearer_token` |
-| 3 | Normal | User reads own ticket | 200 | PASS | `test_owner_can_read_own_ticket` |
-| 4 | Normal | Agent/admin change ticket status | 200 for agent and admin | PASS | `test_status_change_by_role` |
-| 5 | Normal | Admin deletes a ticket | 204 for admin | PASS | `test_delete_ticket_is_admin_only` |
-| 6 | Failure | Wrong password | 401, generic message | PASS | `test_login_wrong_password_is_401` |
-| 7 | Failure | No token on a protected route | 401 | PASS | `test_protected_route_without_token_is_401` |
-| 8 | Failure | User reads someone else's ticket | 404 (not 403) | PASS | `test_user_cannot_read_another_users_ticket` |
-| 9 | Failure | User/agent list accounts | 403 for user and agent | PASS | `test_admin_users_list_by_role` |
-| 10 | Failure | Privilege escalation attempt | 403, role unchanged | PASS | `test_user_cannot_make_themselves_admin` |
-| 11 | Failure | Modified JWT | 401 | PASS | `test_tampered_token_is_401` |
-| 12 | Failure | JWT with alg=none | 401 | PASS | `test_unsigned_alg_none_token_is_refused` |
-| 13 | Failure | Expired JWT | 401 | PASS | `test_expired_token_is_401` |
-| 14 | Failure | 6th login attempt in 60 s | 429 with Retry-After | PASS | `test_login_is_limited_after_five_attempts` |
-| 15 | Failure | Form data instead of JSON | 415 | PASS | `test_wrong_content_type_is_415` |
-| 16 | Failure | Unknown field, empty title, wrong types | 422 | PASS | `test_invalid_ticket_bodies_are_rejected` |
-| 17 | Edge | Title of 100 vs 101 characters | 100 accepted, 101 rejected | PASS | `test_title_length_boundaries` |
-| 18 | Edge | Description of 1000 vs 1001 characters | 1000 accepted, 1001 rejected | PASS | `test_description_length_boundaries` |
-| 19 | Edge | Body above the size limit | 413 | PASS | `test_oversized_body_is_413` |
-| 20 | Edge | Chunked body above the size limit without Content-Length | 413 | PASS | `test_chunked_oversized_body_is_413` |
-| 21 | Edge | Ticket ID that is not a UUID | 404, no crash | PASS | `test_malformed_ticket_ids_are_404_not_500` |
-| 22 | Edge | Wait out the 60 s window (fake clock) | Login allowed again | PASS | `test_limit_resets_after_the_window` |
-| 23 | Edge | New X-Forwarded-For on each attempt | Still limited (429) | PASS | `test_forged_forwarding_header_cannot_bypass_the_limit` |
-| 24 | Edge | Last admin demotes themselves | 409 | PASS | `test_admin_cannot_remove_own_admin_role` |
-| 25 | Edge | Role changed after token was issued | New role applies at once | PASS | `test_role_is_read_from_the_server_not_the_token` |
+This document summarizes representative security tests and the captured verification records. The build script runs pytest and reads its JUnit report; expected outcomes and selected examples are maintained in this script.
 
-All 78 test functions: **78 pass, 0 fail** (parametrised cases are grouped under their function name).
+## Verification summary
 
-## B. Retest after a fix
-
-### B1. Mutation experiment (tests must fail when a control is removed)
-
-A weakness was inserted into a **temporary copy** of the code, the suite was run, then the real code was retested.
-
-| Weakness inserted | Tests that failed | Detected |
+| Check | Recorded result | Evidence source |
 |---|---|---|
-| any logged-in user may list all accounts (broken access control) | 2 | yes |
-| any logged-in user may delete tickets (broken access control) | 2 | yes |
-| any logged-in user may read anyone's ticket (IDOR) | 2 | yes |
-| unknown fields such as 'owner' or 'role' are silently accepted (mass assignment) | 4 | yes |
-| unlimited password guessing on the login endpoint | 5 | yes |
+| Pytest cases | 119 passed, 0 failed, 0 errors, 0 skipped (119 total) | `junit.xml` |
+| Test functions | 78 passed, 0 failed (78 functions; parametrized cases grouped) | `junit.xml` |
+| Mutation checks | 5 of 5 weakened controls detected | `mutation-results.json` |
+| Live demo | All checks passed | `demo-output.txt` |
 
-Retest on the unmodified code: 119 passed in 3.61s
+## Representative test cases
 
-### B2. Live-demo finding: Uvicorn proxy-header handling
+Expected behavior is shown alongside the result for each selected test function. A `PASS` means the function passed in the latest pytest run; parametrized cases are grouped by function.
 
-| Step | Result |
+| # | Class | Scenario | Expected behavior | Latest result | Test function |
+|---:|---|---|---|---|---|
+| 1 | Positive | Health response exposes only its status field | `{"status":"ok"}` | PASS | `test_health_response_contains_only_status` |
+| 2 | Positive | Valid login | 200 and a bearer token | PASS | `test_login_success_returns_bearer_token` |
+| 3 | Positive | User reads own ticket | 200 | PASS | `test_owner_can_read_own_ticket` |
+| 4 | Positive | Agent/admin change ticket status | 200 for agent and admin | PASS | `test_status_change_by_role` |
+| 5 | Positive | Admin deletes a ticket | 204 for admin | PASS | `test_delete_ticket_is_admin_only` |
+| 6 | Negative | Wrong password | 401, generic message | PASS | `test_login_wrong_password_is_401` |
+| 7 | Negative | No token on a protected route | 401 | PASS | `test_protected_route_without_token_is_401` |
+| 8 | Negative | User reads someone else's ticket | 404 (not 403) | PASS | `test_user_cannot_read_another_users_ticket` |
+| 9 | Negative | User/agent list accounts | 403 for user and agent | PASS | `test_admin_users_list_by_role` |
+| 10 | Negative | Privilege escalation attempt | 403, role unchanged | PASS | `test_user_cannot_make_themselves_admin` |
+| 11 | Negative | Modified JWT | 401 | PASS | `test_tampered_token_is_401` |
+| 12 | Negative | JWT with alg=none | 401 | PASS | `test_unsigned_alg_none_token_is_refused` |
+| 13 | Negative | Expired JWT | 401 | PASS | `test_expired_token_is_401` |
+| 14 | Negative | 6th login attempt in 60 s | 429 with Retry-After | PASS | `test_login_is_limited_after_five_attempts` |
+| 15 | Negative | Form data instead of JSON | 415 | PASS | `test_wrong_content_type_is_415` |
+| 16 | Negative | Unknown field, empty title, wrong types | 422 | PASS | `test_invalid_ticket_bodies_are_rejected` |
+| 17 | Boundary | Title of 100 vs 101 characters | 100 accepted, 101 rejected | PASS | `test_title_length_boundaries` |
+| 18 | Boundary | Description of 1000 vs 1001 characters | 1000 accepted, 1001 rejected | PASS | `test_description_length_boundaries` |
+| 19 | Boundary | Body above the size limit | 413 | PASS | `test_oversized_body_is_413` |
+| 20 | Boundary | Chunked body above the size limit without Content-Length | 413 | PASS | `test_chunked_oversized_body_is_413` |
+| 21 | Boundary | Ticket ID that is not a UUID | 404, no crash | PASS | `test_malformed_ticket_ids_are_404_not_500` |
+| 22 | Boundary | Wait out the 60 s window (fake clock) | Login allowed again | PASS | `test_limit_resets_after_the_window` |
+| 23 | Boundary | New X-Forwarded-For on each attempt | Still limited (429) | PASS | `test_forged_forwarding_header_cannot_bypass_the_limit` |
+| 24 | Boundary | Last admin demotes themselves | 409 | PASS | `test_admin_cannot_remove_own_admin_role` |
+| 25 | Boundary | Role changed after token was issued | New role applies at once | PASS | `test_role_is_read_from_the_server_not_the_token` |
+
+## Mutation test results
+
+Each listed weakness was introduced only in a temporary copy. Detection means at least one test failed under that mutation; the unmodified project was then retested.
+
+| Temporary weakness | Failing tests | Detection result |
+|---|---:|---|
+| any logged-in user may list all accounts (broken access control) | 2 | Detected |
+| any logged-in user may delete tickets (broken access control) | 2 | Detected |
+| any logged-in user may read anyone's ticket (IDOR) | 2 | Detected |
+| unknown fields such as 'owner' or 'role' are silently accepted (mass assignment) | 4 | Detected |
+| unlimited password guessing on the login endpoint | 5 | Detected |
+
+Retest on unmodified code: **PASS** — 119 passed in 3.61s.
+
+## Live-server proxy-header check
+
+| Run | Recorded outcome |
 |---|---|
-| Demo client against `uvicorn` with default settings | forged `X-Forwarded-For` check **FAILED** (expected 429, got 401) |
-| Cause | uvicorn's default `--proxy-headers` rewrote the client address from the forged header, so the limiter saw a new client each time |
-| Fix | start the server with `--no-proxy-headers` (documented in the README) |
-| Retest | the same check **PASSED** (429); all demo checks passed |
+| Initial run with Uvicorn's default proxy-header handling | Forwarded-header rate-limit check failed (expected 429, received 401). |
+| Follow-up with `--no-proxy-headers` | Forwarded-header check passed (429). |
+| Full demo after the configuration change | All checks passed. |
 
-Evidence: `docs/evidence/xff-before-after.txt`, `docs/evidence/demo-output.txt`.
-`TestClient` does not start Uvicorn, so it cannot exercise this proxy-header configuration. The live demo verifies that server layer.
+The demo runs through Uvicorn and covers its proxy-header configuration. FastAPI `TestClient` does not start Uvicorn, so this server-level behavior is recorded separately from the pytest suite.
+
+## Evidence files
+
+- [JUnit report](evidence/junit.xml) — generated by this matrix build.
+- [Pytest transcript](evidence/pytest-output.txt) — saved console output from a recorded run.
+- [Mutation results](evidence/mutation-results.json) and [mutation transcript](evidence/mutation-check-output.txt).
+- [Live demo transcript](evidence/demo-output.txt).
+- [Proxy-header before/after transcript](evidence/xff-before-after.txt).
+
+## AI-use and evidence provenance
+
+Claude and GitHub Copilot assisted with drafting project code and documentation. The project owner ran and reviewed the work. Test counts and outcomes in this matrix are read from the local JUnit and saved experiment/demo records; AI assistance is disclosed separately and is not test evidence.
