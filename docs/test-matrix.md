@@ -46,7 +46,7 @@ A weakness was inserted into a **temporary copy** of the code, the suite was run
 | unknown fields such as 'owner' or 'role' are silently accepted (mass assignment) | 4 | yes |
 | unlimited password guessing on the login endpoint | 5 | yes |
 
-Retest on the unmodified code: 116 passed in 3.81s
+Retest on the unmodified code: 116 passed in 3.68s
 
 ### B2. A real failure found by the live demo, then fixed
 
