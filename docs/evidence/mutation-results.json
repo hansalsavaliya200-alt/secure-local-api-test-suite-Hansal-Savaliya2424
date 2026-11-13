@@ -1,0 +1,63 @@
+{
+  "mutations": [
+    {
+      "mutation": "MUT:rbac-admin-users",
+      "weakness": "any logged-in user may list all accounts (broken access control)",
+      "detected": true,
+      "tests_that_failed": [
+        "tests/test_rbac.py::test_admin_users_list_by_role[alice-403]",
+        "tests/test_rbac.py::test_admin_users_list_by_role[carol-403]"
+      ],
+      "summary": "2 failed, 114 passed in 4.07s"
+    },
+    {
+      "mutation": "MUT:rbac-delete",
+      "weakness": "any logged-in user may delete tickets (broken access control)",
+      "detected": true,
+      "tests_that_failed": [
+        "tests/test_rbac.py::test_delete_ticket_is_admin_only[alice-403]",
+        "tests/test_rbac.py::test_delete_ticket_is_admin_only[carol-403]"
+      ],
+      "summary": "2 failed, 114 passed in 3.80s"
+    },
+    {
+      "mutation": "MUT:ticket-ownership",
+      "weakness": "any logged-in user may read anyone's ticket (IDOR)",
+      "detected": true,
+      "tests_that_failed": [
+        "tests/test_rbac.py::test_foreign_ticket_and_missing_ticket_look_identical",
+        "tests/test_rbac.py::test_user_cannot_read_another_users_ticket"
+      ],
+      "summary": "2 failed, 114 passed in 3.67s"
+    },
+    {
+      "mutation": "MUT:forbid-extra",
+      "weakness": "unknown fields such as 'owner' or 'role' are silently accepted (mass assignment)",
+      "detected": true,
+      "tests_that_failed": [
+        "tests/test_auth.py::test_login_rejects_malformed_bodies[payload4]",
+        "tests/test_rbac.py::test_invalid_role_values_are_rejected[payload4]",
+        "tests/test_rbac.py::test_owner_is_taken_from_token_not_body",
+        "tests/test_validation.py::test_invalid_ticket_bodies_are_rejected[payload8]"
+      ],
+      "summary": "4 failed, 112 passed in 3.83s"
+    },
+    {
+      "mutation": "MUT:login-limit",
+      "weakness": "unlimited password guessing on the login endpoint",
+      "detected": true,
+      "tests_that_failed": [
+        "tests/test_ratelimit.py::test_429_has_retry_after_and_standard_error_shape",
+        "tests/test_ratelimit.py::test_correct_password_is_also_blocked_while_limited",
+        "tests/test_ratelimit.py::test_forged_forwarding_header_cannot_bypass_the_limit",
+        "tests/test_ratelimit.py::test_limit_resets_after_the_window",
+        "tests/test_ratelimit.py::test_login_is_limited_after_five_attempts"
+      ],
+      "summary": "5 failed, 111 passed in 5.01s"
+    }
+  ],
+  "retest_on_real_code": {
+    "passed": true,
+    "summary": "116 passed in 3.81s"
+  }
+}

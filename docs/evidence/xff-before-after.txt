@@ -1,0 +1,10 @@
+=== BEFORE (uvicorn default proxy headers) ===
+       Retry-After: 60 seconds, error code: rate_limited
+  [FAIL] forged X-Forwarded-For does not bypass the limit               expected 429, got 401
+
+1 CHECK(S) FAILED
+=== AFTER (--no-proxy-headers) ===
+       Retry-After: 60 seconds, error code: rate_limited
+  [PASS] forged X-Forwarded-For does not bypass the limit               expected 429, got 429
+
+ALL CHECKS PASSED
