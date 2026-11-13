@@ -1,4 +1,4 @@
-# Task 2: Secure Local API and Test Suite
+# Build a secure local API and test suite
 
 **Group A · Ethical Hacking & Web Application Security**
 

@@ -1,19 +1,28 @@
 ---
-toc: true
-toc-depth: 2
+pagetitle: "Build a secure local API and test suite"
+toc: false
 ---
 
-# Secure Local API and Test Suite
+::: {.cover-page}
 
-## Task 2 · Group A · Ethical Hacking & Web Application Security
+<p class="cover-kicker">INTERNSHIP TASK 2 · GROUP A</p>
 
-|  |  |
+# Build a secure local API and test suite
+
+<p class="cover-subtitle">Ethical Hacking & Web Application Security</p>
+
+<p class="cover-summary">A defensive FastAPI service, automated security tests, and a local demonstration.</p>
+
+| Project detail | Value |
 |---|---|
-| **Author** | Hansal Savaliya · Intern ID 2424 |
-| **Report date** | 13 November 2026 |
-| **Repository** | https://github.com/hansalsavaliya200-alt/secure-local-api-test-suite-Hansal-Savaliya2424 |
-| **Demonstration video** | `<ADD VIDEO URL>` |
-| **Project scope** | Defensive test application bound to `127.0.0.1` |
+| Author | Hansal Savaliya |
+| Intern ID | 2424 |
+| Report date | 13 November 2026 |
+| Repository | [Public GitHub repository](https://github.com/hansalsavaliya200-alt/secure-local-api-test-suite-Hansal-Savaliya2424) |
+| Demonstration video | `<ADD VIDEO URL>` |
+| Scope | Local-only API bound to `127.0.0.1` |
+
+:::
 
 ## Executive summary
 

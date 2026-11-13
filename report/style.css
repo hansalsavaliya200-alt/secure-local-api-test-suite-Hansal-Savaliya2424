@@ -18,6 +18,56 @@ h1 {
   margin: 0 0 8pt;
 }
 
+h1:first-of-type {
+  font-size: 30pt;
+  line-height: 1.08;
+  margin-bottom: 7pt;
+}
+
+.cover-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 260mm;
+  page-break-after: always;
+  break-after: page;
+}
+
+.cover-kicker {
+  color: #2c6795;
+  font-size: 10pt;
+  font-weight: 700;
+  letter-spacing: 1.2pt;
+}
+
+.cover-page h1:first-of-type {
+  border-left: 5pt solid #2c6795;
+  margin: 8pt 0 12pt;
+  padding-left: 12pt;
+}
+
+.cover-subtitle {
+  color: #365f82;
+  font-size: 15pt;
+  margin: 0 0 12pt;
+}
+
+.cover-summary {
+  font-size: 11pt;
+  line-height: 1.45;
+  max-width: 155mm;
+}
+
+.cover-page table {
+  font-size: 9pt;
+  margin-top: 16pt;
+  width: 100%;
+}
+
+.cover-page th:first-child {
+  width: 32%;
+}
+
 h2 {
   border-bottom: 1.5pt solid #2c6795;
   color: #12345a;
@@ -114,6 +164,20 @@ a {
 
   h1 {
     font-size: 22pt;
+  }
+
+  h1:first-of-type {
+    font-size: 29pt;
+    line-height: 1.08;
+    margin-bottom: 6pt;
+  }
+
+  .cover-page {
+    min-height: 260mm;
+  }
+
+  .cover-page h1:first-of-type {
+    font-size: 29pt;
   }
 
   h2 {
