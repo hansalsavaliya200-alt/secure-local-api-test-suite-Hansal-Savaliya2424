@@ -1,68 +1,32 @@
 # Learning journal: Hansal Savaliya, Intern ID 2424
 
-## What I ran and what I saw
+## Verification work
 
-- I ran the pytest suite. The saved output shows **119 passed** ([pytest-output.txt](evidence/pytest-output.txt)).
-- I ran the mutation check. All **5** weakened controls were detected, and the unmodified code passed the retest ([mutation-check-output.txt](evidence/mutation-check-output.txt)).
-- I ran the demo against my local server on `127.0.0.1:8011`. It ended with **ALL CHECKS PASSED** ([demo-output.txt](evidence/demo-output.txt)).
-- Starting the API on port `8000` failed on Windows with `WinError 10013`, so I used port `8011` instead. I have not confirmed why Windows refused port 8000.
-- The forwarded-address check failed at first: it expected `429` but got `401` with Uvicorn's default proxy-header handling. After I started Uvicorn with `--no-proxy-headers` it returned `429` ([xff-before-after.txt](evidence/xff-before-after.txt)).
+I ran the automated suite and recorded **119 passing test cases across 78 test functions**. The suite covered successful requests as well as rejected logins, invalid tokens, access-control failures, invalid input, and boundary cases. The saved output is in [pytest-output.txt](evidence/pytest-output.txt), and the selected expected-versus-actual cases are in the [security verification matrix](test-matrix.md).
 
-## Concepts I learned
+I also ran the mutation check. Five selected controls were weakened in temporary copies, and the test suite detected all five changes. The unmodified code passed its retest. This showed that the tests catch those particular regressions; it does not prove that every possible security issue is covered. The run is recorded in [mutation-check-output.txt](evidence/mutation-check-output.txt) and [mutation-results.json](evidence/mutation-results.json).
 
-### 1. Authentication vs authorisation
-What I saw: `/me` without a token gave `401`; a normal user listing all accounts gave `403`; the admin got `200`.
+The local demo against `127.0.0.1:8011` exercised authentication, ticket access, input validation, role checks, and rate limiting. Its saved output ends with **ALL CHECKS PASSED** ([demo-output.txt](evidence/demo-output.txt)).
 
-**In my own words, what is the difference, and where in the request does each one happen?**
-`<WRITE 2-3 SENTENCES>`
+## What the PortSwigger labs connected to the project
 
-### 2. JWT validation
-What I saw: a modified token gave `401`. The tests also cover an `alg=none` token and an expired one. The API pins HS256 and requires `exp`, `iat`, `sub` and `iss` ([security.py](../app/security.py)).
+The six labs I completed are recorded in the [PortSwigger lab log](portswigger-lab-log.md). Comparing them with this API helped me connect the lab lessons to specific controls and tests:
 
-**Why does the server pin the algorithm instead of reading it from the token?**
-`<WRITE 2-3 SENTENCES>`
+1. **Username enumeration:** Different login responses can reveal whether a username exists. My API returns the same generic `401` response for an unknown user and an incorrect password (`test_unknown_user_and_wrong_password_look_identical`).
+2. **Broken brute-force protection:** A login limit should not be easy to reset or bypass. My API counts unsuccessful and successful attempts during the limit window, and the tests check that a forged `X-Forwarded-For` value does not bypass the limit (`test_correct_password_is_also_blocked_while_limited`, `test_forged_forwarding_header_cannot_bypass_the_limit`).
+3. **JWT algorithm confusion:** The server should select the accepted signing algorithm instead of trusting the token header. My API pins HS256 and requires its expected claims. It uses a shared secret and has no public-key/JWKS endpoint, so the exact lab setup is not present in this project (`test_unsigned_alg_none_token_is_refused`, `test_tampered_token_is_401`).
+4. **Changing a role through a profile request:** Privileges must be controlled by the server, not assigned from an untrusted request. This API looks up roles on the server, rejects unknown request fields, and tests that a user cannot promote themselves (`test_role_is_read_from_the_server_not_the_token`, `test_user_cannot_make_themselves_admin`).
+5. **Changing a user ID in a request:** A requested object ID is not proof of permission to read that object. The API checks ticket ownership server-side; a foreign ticket and a missing ticket both return `404` (`test_user_cannot_read_another_users_ticket`, `test_foreign_ticket_and_missing_ticket_look_identical`).
+6. **Mass assignment:** Request models should accept only intended fields, not client-supplied values that should be set by the server. The API rejects extra fields and takes ticket ownership from the authenticated identity (`test_invalid_ticket_bodies_are_rejected`, `test_owner_is_taken_from_token_not_body`).
 
-### 3. Role checks and ticket ownership
-What I saw: Bob asking for Alice's ticket gave `404`; the agent could read it.
+Across these labs, the common point was to treat client-controlled values as untrusted. In the API, that means validating tokens and request fields, enforcing roles and ownership on the server, and applying login limits consistently. The tests give evidence for these specific controls, not a guarantee that no other weakness exists.
 
-**Why `404` and not `403`? Why is the role read from the server and not from the token?**
-`<WRITE 2-3 SENTENCES>`
+## Troubleshooting notes
 
-### 4. Input validation
-What I saw: an unknown `owner` field and an empty title gave `422`; form data instead of JSON gave `415` ([models.py](../app/models.py), [test-matrix.md](test-matrix.md)).
+### API port
 
-**What attack does rejecting unknown fields stop?**
-`<WRITE 2-3 SENTENCES>`
+Starting the API on port `8000` returned Windows `WinError 10013`. I used port `8011` for the API and demo, which then ran successfully. The recorded evidence does not establish why Windows denied the original bind, so I have not assumed a cause.
 
-### 5. Rate limiting and proxy headers
-What I saw: the 6th login attempt gave `429` with `Retry-After: 60`.
+### Uvicorn proxy-header handling
 
-**How does the limiter decide who a client is, and why can't it trust `X-Forwarded-For`?**
-`<WRITE 2-3 SENTENCES>`
-
-### 6. Mutation testing
-What I saw: removing 5 controls in temporary copies made tests fail every time, and the real code passed the retest. This shows the suite catches those 5 changes, not every possible bug ([mutation-results.json](evidence/mutation-results.json)).
-
-**What does mutation testing show beyond the fact that all 119 tests passed?**
-`<WRITE 2-3 SENTENCES>`
-
-## Troubleshooting record: API port binding
-
-**What happened:** starting the API on port `8000` returned `WinError 10013`. I used port `8011` for the API and demo instead.
-
-**How I diagnosed it:** `<DESCRIBE WHAT YOU CHECKED. The saved evidence confirms the retry on port 8011, but not why Windows denied the bind on port 8000.>`
-
-**What changed:** the API and demo worked on port `8011`.
-
-**What I would do differently:** `<YOUR ANSWER. Describe what you would check next time; do not guess the cause if you did not confirm it.>`
-
-## Separate finding: Uvicorn proxy-header handling
-
-This was separate from the port binding error. With Uvicorn's default proxy-header handling, the forwarded-address check expected `429` but received `401`. Starting Uvicorn with `--no-proxy-headers` made that check return `429`. The before-and-after output is [xff-before-after.txt](evidence/xff-before-after.txt).
-
-## PortSwigger labs
-
-My lab records are in [portswigger-lab-log.md](portswigger-lab-log.md).
-
-**What did the labs change in how I look at my own API?**
-`<WRITE 2-3 SENTENCES>`
+In a separate live check, Uvicorn's default proxy-header handling caused the forwarded-address rate-limit check to return `401` instead of the expected `429`. Starting Uvicorn with `--no-proxy-headers` made that check return `429`; the live demo then passed. The before-and-after output is in [xff-before-after.txt](evidence/xff-before-after.txt). This was a server launch-configuration issue distinct from the port-binding error.
