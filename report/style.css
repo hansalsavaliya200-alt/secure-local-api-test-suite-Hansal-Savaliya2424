@@ -152,6 +152,10 @@ a {
   text-decoration: none;
 }
 
+img {
+  max-width: 100%;
+}
+
 @media print {
   @page {
     margin: 12mm 12mm 14mm;

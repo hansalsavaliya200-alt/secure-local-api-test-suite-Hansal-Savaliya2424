@@ -107,10 +107,6 @@ report/     technical-report.md / .pdf
 
 Everything runs on 127.0.0.1 with fictional data. See [`docs/scope-and-ethics.md`](docs/scope-and-ethics.md).
 
-## AI use
-
-Claude and GitHub Copilot assisted with drafting code and documentation. I ran the tests and reviewed the project.
-
 ## References
 
 [`references.md`](references.md). Licence: MIT.

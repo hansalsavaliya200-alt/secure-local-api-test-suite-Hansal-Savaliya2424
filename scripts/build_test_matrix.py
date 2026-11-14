@@ -145,11 +145,9 @@ lines += [
     "- [Live demo transcript](evidence/demo-output.txt).",
     "- [Proxy-header before/after transcript](evidence/xff-before-after.txt).",
     "",
-    "## AI-use and evidence provenance",
+    "## Evidence provenance",
     "",
-    "Claude and GitHub Copilot assisted with drafting project code and documentation. The project owner "
-    "ran and reviewed the work. Test counts and outcomes in this matrix are read from the local JUnit and "
-    "saved experiment/demo records; AI assistance is disclosed separately and is not test evidence.",
+    "Test counts and outcomes in this matrix are derived from the local JUnit and saved experiment/demo records.",
     "",
 ]
 (ROOT / "docs" / "test-matrix.md").write_text("\n".join(lines), encoding="utf-8")

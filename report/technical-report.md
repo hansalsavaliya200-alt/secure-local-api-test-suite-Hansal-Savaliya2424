@@ -22,6 +22,8 @@ toc: false
 | Demonstration video | [Watch the demonstration](https://drive.google.com/file/d/1C0qGbq_oXyCpmH9ZxIJuaP0pHyhnPAQt/view?usp=sharing) |
 | Scope | Local-only API bound to `127.0.0.1` |
 
+![Rendered summaries of the saved pytest, live demo, and mutation outputs.](evidence-panels/verification-summary.png){ width=100% }
+
 :::
 
 ## Executive summary
@@ -297,11 +299,7 @@ The findings distinguish tested controls from behavior observed during live veri
 | Medium | Define token revocation and signing-key rotation procedures | Current access tokens remain valid until expiry or account disablement |
 | Further verification | Run dependency review and additional authorized local-lab testing | Neither activity was performed for this report; results must be recorded only if actually completed |
 
-## 9. Use of AI tools
-
-Claude and GitHub Copilot helped draft code and documents. I ran and reviewed the project.
-
-## 10. Sources and supporting evidence
+## 9. Sources and supporting evidence
 
 Bracketed numbers refer to `references.md`, which lists titles, URLs, access-date notes, and how each source informed the project. The WSTG citation points to the current official authorization-testing section. The Uvicorn website was unavailable during review, so the report cites Uvicorn's official settings file on GitHub.
 
@@ -310,6 +308,7 @@ Primary project evidence:
 - Automated run: `docs/evidence/pytest-output.txt`
 - Live requests: `docs/evidence/demo-output.txt`
 - Mutation results: `docs/evidence/mutation-check-output.txt` and `docs/evidence/mutation-results.json`
+- Rendered output panel: `report/evidence-panels/verification-summary.png` (derived from the saved transcripts; not a terminal screenshot)
 - Before/after launch behavior: `docs/evidence/xff-before-after.txt`
 - Expected/actual matrix: `docs/test-matrix.md`
 - Scope and synthetic data: `docs/scope-and-ethics.md`
