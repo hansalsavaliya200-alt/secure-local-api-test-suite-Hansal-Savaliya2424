@@ -50,7 +50,7 @@ The objective was to implement and test common API security controls using ficti
 | `agent` | Read tickets and update ticket status |
 | `admin` | Administrative user and ticket operations |
 
-Tests cover four areas: authentication and token handling, function- and object-level access control, input validation, and request-rate/resource controls. PortSwigger Academy labs are completed only in PortSwigger's lab environment; the two screenshot-confirmed entries are listed in `docs/portswigger-lab-log.md`.
+Tests cover four areas: authentication and token handling, function- and object-level access control, input validation, and request-rate/resource controls. Six completed PortSwigger Academy labs, performed in PortSwigger's lab environment, are summarized in `docs/portswigger-lab-log.md`.
 
 All API and live-demo requests target `127.0.0.1`. Demo accounts (`alice`, `bob`, `carol`, `dave`), tickets, and test values are fictional. No real user credentials, personal data, or third-party targets were used for the API tests. The complete scope statement and data provenance are in `docs/scope-and-ethics.md`.
 
