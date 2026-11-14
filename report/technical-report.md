@@ -19,7 +19,7 @@ toc: false
 | Intern ID | 2424 |
 | Report date | 13 November 2026 |
 | Repository | [Public GitHub repository](https://github.com/hansalsavaliya200-alt/secure-local-api-test-suite-Hansal-Savaliya2424) |
-| Demonstration video | `<ADD VIDEO URL>` |
+| Demonstration video | [Watch the demonstration](https://drive.google.com/file/d/1C0qGbq_oXyCpmH9ZxIJuaP0pHyhnPAQt/view?usp=sharing) |
 | Scope | Local-only API bound to `127.0.0.1` |
 
 :::

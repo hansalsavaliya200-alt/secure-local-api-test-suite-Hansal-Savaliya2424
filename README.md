@@ -6,7 +6,7 @@
 
 A local FastAPI ticket service for demonstrating authentication, authorization, input validation, and rate limiting. Its pytest suite checks both permitted and denied requests. The demo uses fictional data and targets `127.0.0.1`.
 
-- Video: `<ADD VIDEO LINK AFTER UPLOAD>`
+- Video: [Demonstration video](https://drive.google.com/file/d/1C0qGbq_oXyCpmH9ZxIJuaP0pHyhnPAQt/view?usp=sharing)
 - Repository: [GitHub](https://github.com/hansalsavaliya200-alt/secure-local-api-test-suite-Hansal-Savaliya2424)
 - Technical report: [`report/technical-report.pdf`](report/technical-report.pdf)
 - Test matrix: [`docs/test-matrix.md`](docs/test-matrix.md)
