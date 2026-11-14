@@ -30,20 +30,7 @@ The 6th login attempt in the demo returned `429` with `Retry-After: 60`. The lim
 ### Mutation testing
 Passing tests only show that the code meets the tests. By removing a control on purpose, such as the admin check or the ownership check, I could confirm that the tests fail when a control is missing. This makes the test suite itself more trustworthy, but it only covers the five changes I tried.
 
-## 3. What the PortSwigger labs connected to the project
-
-The six labs I completed are in the [PortSwigger lab log](portswigger-lab-log.md). Comparing them with my API linked each lab to a specific control and test:
-
-1. **Username enumeration:** different login responses reveal whether a username exists. My API returns the same `401` for an unknown user and a wrong password (`test_unknown_user_and_wrong_password_look_identical`).
-2. **Broken brute-force protection:** a login limit should not be easy to reset or bypass. My API counts every attempt in the window, and a forged `X-Forwarded-For` does not bypass it (`test_correct_password_is_also_blocked_while_limited`, `test_forged_forwarding_header_cannot_bypass_the_limit`).
-3. **JWT algorithm confusion:** the server must choose the accepted algorithm, not trust the token header. My API pins HS256 and requires its claims. It uses a shared secret and has no public key or JWKS endpoint, so the exact lab setup is not present in this project (`test_unsigned_alg_none_token_is_refused`, `test_tampered_token_is_401`).
-4. **Changing a role through a profile request:** privileges must be set by the server. My API looks up roles on the server, rejects unknown fields and tests that a user cannot promote themselves (`test_role_is_read_from_the_server_not_the_token`, `test_user_cannot_make_themselves_admin`).
-5. **Changing a user ID in a request:** an ID is not proof of permission. The API checks ticket ownership on the server, and a foreign ticket and a missing ticket both return `404` (`test_user_cannot_read_another_users_ticket`, `test_foreign_ticket_and_missing_ticket_look_identical`).
-6. **Mass assignment:** accept only intended fields. The API rejects extra fields and takes ticket ownership from the authenticated identity (`test_invalid_ticket_bodies_are_rejected`, `test_owner_is_taken_from_token_not_body`).
-
-The common lesson is to treat everything the client controls as untrusted, and to let the server decide roles, ownership, prices and limits.
-
-## 4. Mistakes and troubleshooting
+## 3. Mistakes and troubleshooting
 
 ### Mistake 1: the forwarded-address check returned `401` instead of `429`
 
@@ -62,3 +49,5 @@ The common lesson is to treat everything the client controls as untrusted, and t
 **What I did:** I used port `8011` for the API and the demo, which then ran successfully. The recorded evidence does not show why Windows denied the original bind, so I have not assumed a cause.
 
 **What I would do next time:** check which process or reserved range is using the port before changing it, so I know the cause and not just the workaround.
+
+The six completed labs and their individual connections to the API are documented in the [PortSwigger lab log](portswigger-lab-log.md). The concepts above summarize the controls those labs relate to without repeating the lab entries.
