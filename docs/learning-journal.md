@@ -1,6 +1,6 @@
 # Learning journal: Hansal Savaliya, Intern ID 2424
 
-Task 2, Group A: Ethical Hacking & Web Application Security. All testing was done on my own computer against my own local API with fictional data.
+**Task 2 title:** Build a secure local API and test suite. **Group A:** Ethical Hacking & Web Application Security. All testing was done on my own computer against my own local API with fictional data.
 
 ## 1. Verification work
 
